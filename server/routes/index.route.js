@@ -2,6 +2,7 @@ import express from 'express';
 import buildingPermitRoutes from './building-permit.route';
 import buildingPermitOptions from './building-permit-options.route';
 import buildingLicenseApplicationOptions from './business-license-application-option.route';
+import buildingLicenseApplication from './business-license-application.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -13,6 +14,9 @@ router.use('/building-permit', buildingPermitRoutes);
 
 // mount building permit option routes
 router.use('/building-permit-options', buildingPermitOptions);
+
+// mount building license application routes
+router.use('/business-license-application', buildingLicenseApplication);
 
 // mount building license application option routes
 router.use('/business-license-application-options', buildingLicenseApplicationOptions);
