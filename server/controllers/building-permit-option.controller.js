@@ -11,6 +11,7 @@ const {
     Residential,
     SewageDisposalType,
     WaterSupplyType,
+    OwnershipType,
 } = db;
 
 
@@ -49,6 +50,14 @@ function getAll(req, res, next) {
         },
         nonResidentials: (cb) => {
             NonResidential
+                .findAll()
+                .then((allTypes) => cb(null, allTypes))
+                .catch((err) => {
+                    cb(err);
+                });
+        },
+        ownershipTypes: (cb) => {
+            OwnershipType
                 .findAll()
                 .then((allTypes) => cb(null, allTypes))
                 .catch((err) => {

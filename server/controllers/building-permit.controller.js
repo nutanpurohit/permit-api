@@ -1,8 +1,17 @@
 import httpStatus from 'http-status';
+import * as _ from 'lodash';
 import db from '../../config/sequelize';
 
-const { BuildingPermits } = db;
-
+const {
+    BuildingType,
+    IdentificationType,
+    MechanicalType,
+    NonResidential,
+    PrincipleFameType,
+    Residential,
+    SewageDisposalType,
+    WaterSupplyType,
+} = db;
 
 /**
  * Create new building permit
@@ -12,14 +21,14 @@ const { BuildingPermits } = db;
  * @param next - The callback function
  */
 function create(req, res, next) {
-    // const user = User.build({
-    //     username: req.body.username,
-    //     type: req.body.type,
-    // });
-    //
-    // user.save()
-    //     .then((savedUser) => res.json(savedUser))
-    //     .catch((e) => next(e));
+    const payload = req.body;
+
+    // eslint-disable-next-line no-use-before-define
+    validateCreatePayload((payload, validationErr) => {
+        const e = new Error(validationErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    });
 }
 
 /**
@@ -53,4 +62,18 @@ function get(req, res, callback) {
 
 export default {
     get, create, update,
+};
+
+const validateCreatePayload = (payload, callback) => {
+    if (!_.isEmpty(payload.buildingType)) {
+        BuildingType.findAll({ where: { id: payload.buildingType } })
+            .then((types) => {
+                if (_.isEmpty(types) || types.length !== payload.buildingType) {
+                    return callback('The building type value is incorrect');
+                }
+            })
+            .catch(() => {
+                return callback('something went wrong while checking building types');
+            });
+    }
 };

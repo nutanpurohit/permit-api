@@ -20,15 +20,54 @@ module.exports = (sequelize, DataTypes) => {
         groupOccupancy: { type: DataTypes.STRING(300) },
         constructionType: { type: DataTypes.STRING(300) },
         foundation: { type: DataTypes.STRING(300) },
-        buildingType: { type: DataTypes.STRING(300) },
+        buildingType: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
         otherBuildingType: { type: DataTypes.STRING(300) },
         buildingDimension: { type: DataTypes.STRING(300) },
-        ownership: { type: DataTypes.STRING(300) },
+        ownership: { type: DataTypes.BIGINT },
         improvementsCost: { type: DataTypes.BIGINT.UNSIGNED },
         electricalCost: { type: DataTypes.BIGINT.UNSIGNED },
         plumbingCost: { type: DataTypes.BIGINT.UNSIGNED },
         heatingAndACCost: { type: DataTypes.BIGINT.UNSIGNED },
         otherCost: { type: DataTypes.BIGINT.UNSIGNED },
+        improvementCostTotal: { type: DataTypes.BIGINT.UNSIGNED },
+
+        residential: { type: DataTypes.BIGINT.UNSIGNED },
+        residentialNoOfFamily: { type: DataTypes.BIGINT.UNSIGNED },
+        otherResidential: { type: DataTypes.STRING },
+        residentialHotelMotel: { type: DataTypes.BIGINT.UNSIGNED },
+
+
+        nonResidential: { type: DataTypes.BIGINT.UNSIGNED },
+        otherNonResidential: { type: DataTypes.STRING },
+
+        principalTypeOfFrame: { type: DataTypes.BIGINT.UNSIGNED },
+        otherPrincipalTypeOfFrame: { type: DataTypes.STRING(300) },
+
+        sewageDisposalType: { type: DataTypes.BIGINT.UNSIGNED },
+
+        mechanicalType: { type: DataTypes.BIGINT.UNSIGNED },
+
+        hasCentralAC: { type: DataTypes.BOOLEAN },
+        hasElevator: { type: DataTypes.BOOLEAN },
+
+        waterSupplyType: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+
+        noOfStories: { type: DataTypes.BIGINT.UNSIGNED },
+
+        exteriorDimensions: { type: DataTypes.STRING },
+
+        totalLandArea: { type: DataTypes.STRING },
+
+        enclosed: { type: DataTypes.STRING },
+        outdoors: { type: DataTypes.STRING },
+
+        noOfBedRoom: { type: DataTypes.BIGINT.UNSIGNED },
+        noOfBedRoomFull: { type: DataTypes.BIGINT.UNSIGNED },
+        noOfBedRoomPartial: { type: DataTypes.BIGINT.UNSIGNED },
+        indentificationIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+        ownerLesor: { type: DataTypes.STRING },
+        currentAddress: { type: DataTypes.STRING(300) },
+        applicationDate: { type: DataTypes.DATEONLY },
     });
 
     return BuildingPermit;
