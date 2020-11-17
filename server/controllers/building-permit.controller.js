@@ -357,14 +357,38 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
                             return cb('The plan review records array has incorrect review type value');
                         }
 
-                        PlanReview.bulkCreate(payload.planReviewRecords)
-                            .then((createdRecords) => {
-                                payload.planReviewIds = createdRecords.map((obj) => obj.id);
-                                cb();
-                            })
-                            .catch(() => {
-                                return cb('something went wrong while creating the plan review records');
-                            });
+                        async.eachLimit(payload.planReviewRecords, 5, (planReviewRecordObj, eachCb) => {
+                            payload.planReviewIds = [];
+                            if (!planReviewRecordObj.id) {
+                                // create
+                                PlanReview.create(planReviewRecordObj)
+                                    .then((createdRecords) => {
+                                        payload.planReviewIds.push(createdRecords.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while creating the plan review comments');
+                                    });
+                            } else {
+                                // update
+                                const updatePayload = { ...planReviewRecordObj };
+                                delete updatePayload.id;
+
+                                PlanReview.update(updatePayload, { where: { id: planReviewRecordObj.id } })
+                                    .then(() => {
+                                        payload.planReviewIds.push(planReviewRecordObj.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while updating the plan review record');
+                                    });
+                            }
+                        }, (eachErr) => {
+                            if (eachErr) {
+                                return cb(eachErr);
+                            }
+                            return cb();
+                        });
                     })
                     .catch(() => {
                         return cb('something went wrong while checking plan review records');
@@ -382,14 +406,38 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
                             return cb('The agency comments array has incorrect agency type value');
                         }
 
-                        AgencyComments.bulkCreate(payload.agencyComments)
-                            .then((createdRecords) => {
-                                payload.agencyCommentIds = createdRecords.map((obj) => obj.id);
-                                cb();
-                            })
-                            .catch(() => {
-                                return cb('something went wrong while creating the agency comments');
-                            });
+                        async.eachLimit(payload.agencyComments, 5, (agencyCommentObj, eachCb) => {
+                            payload.agencyCommentIds = [];
+                            if (!agencyCommentObj.id) {
+                                // create
+                                AgencyComments.create(agencyCommentObj)
+                                    .then((createdRecords) => {
+                                        payload.agencyCommentIds.push(createdRecords.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while creating the agency comments');
+                                    });
+                            } else {
+                                // update
+                                const updatePayload = { ...agencyCommentObj };
+                                delete updatePayload.id;
+
+                                AgencyComments.update(updatePayload, { where: { id: agencyCommentObj.id } })
+                                    .then(() => {
+                                        payload.agencyCommentIds.push(agencyCommentObj.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while updating the agency comment record');
+                                    });
+                            }
+                        }, (eachErr) => {
+                            if (eachErr) {
+                                return cb(eachErr);
+                            }
+                            return cb();
+                        });
                     })
                     .catch(() => {
                         return cb('something went wrong while checking agency comment types');
