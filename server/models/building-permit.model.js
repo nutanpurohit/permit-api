@@ -30,11 +30,12 @@ module.exports = (sequelize, DataTypes) => {
         heatingAndACCost: { type: DataTypes.BIGINT.UNSIGNED },
         otherCost: { type: DataTypes.BIGINT.UNSIGNED },
         improvementCostTotal: { type: DataTypes.BIGINT.UNSIGNED },
+        nonResidentialPurpose: { type: DataTypes.STRING(600) },
 
         residential: { type: DataTypes.BIGINT.UNSIGNED },
         residentialNoOfFamily: { type: DataTypes.BIGINT.UNSIGNED },
+        residentialNoOfHotelMotel: { type: DataTypes.BIGINT.UNSIGNED },
         otherResidential: { type: DataTypes.STRING },
-        residentialHotelMotel: { type: DataTypes.BIGINT.UNSIGNED },
 
 
         nonResidential: { type: DataTypes.BIGINT.UNSIGNED },
@@ -45,12 +46,9 @@ module.exports = (sequelize, DataTypes) => {
 
         sewageDisposalType: { type: DataTypes.BIGINT.UNSIGNED },
 
-        mechanicalType: { type: DataTypes.BIGINT.UNSIGNED },
+        mechanicalType: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
 
-        hasCentralAC: { type: DataTypes.BOOLEAN },
-        hasElevator: { type: DataTypes.BOOLEAN },
-
-        waterSupplyType: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+        waterSupplyType: { type: DataTypes.BIGINT.UNSIGNED },
 
         noOfStories: { type: DataTypes.BIGINT.UNSIGNED },
 
@@ -58,8 +56,8 @@ module.exports = (sequelize, DataTypes) => {
 
         totalLandArea: { type: DataTypes.STRING },
 
-        enclosed: { type: DataTypes.STRING },
-        outdoors: { type: DataTypes.STRING },
+        enclosedParking: { type: DataTypes.BIGINT.UNSIGNED },
+        outdoorsParking: { type: DataTypes.BIGINT.UNSIGNED },
 
         noOfBedRoom: { type: DataTypes.BIGINT.UNSIGNED },
         noOfBedRoomFull: { type: DataTypes.BIGINT.UNSIGNED },

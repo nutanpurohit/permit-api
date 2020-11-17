@@ -7,7 +7,9 @@ module.exports = {
     "rules": {
         "indent": ["error", 4],
         "consistent-return": [0],
-        "arrow-body-style": [0]
+        "arrow-body-style": [0],
+        "no-param-reassign": [0],
+        "max-len": [0],
     },
     "parserOptions": {
         "sourceType": "module",

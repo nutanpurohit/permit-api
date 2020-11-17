@@ -61,7 +61,7 @@ app.use((err, req, res, next) => {
         const error = new APIError(unifiedErrorMessage, err.status, true);
         return next(error);
     } if (!(err instanceof APIError)) {
-        const apiError = new APIError(err.message, err.status, err.isPublic);
+        const apiError = new APIError(err.message, err.status, true);
         return next(apiError);
     }
     return next(err);

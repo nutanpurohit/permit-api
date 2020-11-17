@@ -47,9 +47,6 @@ node_modules
 # Optional REPL history
 .node_repl_history
 
-# .env
-.env
-
 # Gradle ignores for using a gradle build
 .gradle
 build/nodejs
