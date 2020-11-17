@@ -12,6 +12,8 @@ const {
     SewageDisposalType,
     WaterSupplyType,
     OwnershipType,
+    PlanReviewType,
+    AgencyType,
 } = db;
 
 
@@ -90,6 +92,22 @@ function getAll(req, res, next) {
         },
         waterSupplyTypes: (cb) => {
             WaterSupplyType
+                .findAll()
+                .then((allTypes) => cb(null, allTypes))
+                .catch((err) => {
+                    cb(err);
+                });
+        },
+        planReviewTypes: (cb) => {
+            PlanReviewType
+                .findAll()
+                .then((allTypes) => cb(null, allTypes))
+                .catch((err) => {
+                    cb(err);
+                });
+        },
+        agencyTypes: (cb) => {
+            AgencyType
                 .findAll()
                 .then((allTypes) => cb(null, allTypes))
                 .catch((err) => {
