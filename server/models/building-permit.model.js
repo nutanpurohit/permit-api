@@ -62,7 +62,7 @@ module.exports = (sequelize, DataTypes) => {
         noOfBedRoom: { type: DataTypes.BIGINT.UNSIGNED },
         noOfBedRoomFull: { type: DataTypes.BIGINT.UNSIGNED },
         noOfBedRoomPartial: { type: DataTypes.BIGINT.UNSIGNED },
-        indentificationIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+        identificationIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
         ownerLesor: { type: DataTypes.STRING },
         currentAddress: { type: DataTypes.STRING(300) },
         applicationDate: { type: DataTypes.DATEONLY },
@@ -76,6 +76,10 @@ module.exports = (sequelize, DataTypes) => {
         leaseOrAuthorization: { type: DataTypes.STRING(300) },
         TLUCApprovalCondition: { type: DataTypes.STRING(600) },
         agencyCommentIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+        validationTitle: { type: DataTypes.STRING(300) },
+        validationDate: { type: DataTypes.DATEONLY },
+        validationTotal: { type: DataTypes.BIGINT.UNSIGNED },
+
     });
 
     return BuildingPermit;

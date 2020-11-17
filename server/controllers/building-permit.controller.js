@@ -41,7 +41,14 @@ function create(req, res, next) {
 
         BuildingPermits.create(payload)
             .then((createdRecord) => {
-                return res.json(createdRecord);
+                // eslint-disable-next-line no-use-before-define
+                getCompletePermitForm(createdRecord.id, (err, response) => {
+                    if (err) {
+                        return next(err);
+                    }
+
+                    return res.json(response.permitForm);
+                });
             })
             .catch(() => {
                 const e = new Error('An error occurred while posting the form');
@@ -99,6 +106,53 @@ function updatePermitByStaff(req, res, next) {
 }
 
 /**
+ * update the building permit record
+ *
+ * @param req - The http request object
+ * @param res - The http response object
+ * @param next - The callback function
+ */
+function updatePermit(req, res, next) {
+    const payload = req.body;
+    const permitFormId = req.params.id;
+
+    // eslint-disable-next-line no-use-before-define
+    validateUpdatePayload(permitFormId, payload, (validationErr) => {
+        if (validationErr) {
+            const e = new Error(validationErr);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+
+        const updates = { ...payload };
+        delete updates.permitFormId;
+
+        const updateOption = {
+            where: {
+                id: permitFormId,
+            },
+        };
+
+        BuildingPermits.update(updates, updateOption)
+            .then(() => {
+                // eslint-disable-next-line no-use-before-define
+                getCompletePermitForm(permitFormId, (err, response) => {
+                    if (err) {
+                        return next(err);
+                    }
+
+                    return res.json(response.permitForm);
+                });
+            })
+            .catch(() => {
+                const e = new Error('An error occurred while updating the permit form');
+                e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                return next(e);
+            });
+    });
+}
+
+/**
  * get specific building permit
  *
  * @param req - The http request object
@@ -120,7 +174,7 @@ function get(req, res, next) {
 
 
 export default {
-    get, create, updatePermitByStaff,
+    get, create, updatePermitByStaff, updatePermit,
 };
 
 const validateCreatePayload = (payload, callback) => {
@@ -246,18 +300,18 @@ const validateCreatePayload = (payload, callback) => {
             cb();
         },
         (cb) => {
-            if (!_.isEmpty(payload.indentifications)) {
-                const identificationIds = payload.indentifications.map((item) => item.identificationTypeId);
+            if (!_.isEmpty(payload.identifications)) {
+                const identificationIds = payload.identifications.map((item) => item.identificationTypeId);
 
                 return IdentificationType.findAll({ where: { id: identificationIds } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.indentifications.length) {
+                        if (_.isEmpty(types) || types.length !== payload.identifications.length) {
                             return cb('The identification array has incorrect identification type value');
                         }
 
-                        Identification.bulkCreate(payload.indentifications)
+                        Identification.bulkCreate(payload.identifications)
                             .then((createdRecords) => {
-                                payload.indentificationIds = createdRecords.map((obj) => obj.id);
+                                payload.identificationIds = createdRecords.map((obj) => obj.id);
                                 cb();
                             })
                             .catch(() => {
@@ -379,14 +433,14 @@ const getCompletePermitForm = (permitId, callback) => {
         },
         // find the identification records for this form
         (processingData, cb) => {
-            const { indentificationIds } = processingData.permitForm;
-            if (_.isEmpty(indentificationIds)) {
+            const { identificationIds } = processingData.permitForm;
+            if (_.isEmpty(identificationIds)) {
                 return cb(null, processingData);
             }
 
-            Identification.findAll({ where: { id: indentificationIds } })
+            Identification.findAll({ where: { id: identificationIds } })
                 .then((identifications) => {
-                    if (_.isEmpty(identifications) || identifications.length !== indentificationIds.length) {
+                    if (_.isEmpty(identifications) || identifications.length !== identificationIds.length) {
                         const e = new Error('Some of the identification information for this form is missing');
                         e.status = httpStatus.BAD_REQUEST;
                         return cb(e);
@@ -455,5 +509,182 @@ const getCompletePermitForm = (permitId, callback) => {
         }
 
         callback(null, processingData);
+    });
+};
+
+const validateUpdatePayload = (permitFormId, payload, callback) => {
+    async.waterfall([
+        (cb) => {
+            BuildingPermits.findOne({ where: { id: permitFormId } })
+                .then((permitForm) => {
+                    if (_.isEmpty(permitForm)) {
+                        return cb('The permit form do not exist');
+                    }
+                    cb();
+                })
+                .catch(() => {
+                    return cb('something went wrong while finding permit form');
+                });
+        },
+        (cb) => {
+            if (!_.isEmpty(payload.buildingType)) {
+                return BuildingType.findAll({ where: { id: payload.buildingType } })
+                    .then((types) => {
+                        if (_.isEmpty(types) || types.length !== payload.buildingType.length) {
+                            return cb('The building type value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking building types');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.ownership) {
+                return OwnershipType.findByPk(payload.ownership)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The ownership type value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking ownership types');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.residential) {
+                return Residential.findByPk(payload.residential)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The residential type value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking residential types');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.nonResidential) {
+                return NonResidential.findByPk(payload.nonResidential)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The non-residential type value is incorrect');
+                        }
+                        return cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking non-residential types');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.principalTypeOfFrame) {
+                return PrincipleFameType.findByPk(payload.principalTypeOfFrame)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The principal type of fame value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking principal type of fame types');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.sewageDisposalType) {
+                return SewageDisposalType.findByPk(payload.sewageDisposalType)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The type of sewage disposal value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking type of sewage disposal');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (!_.isEmpty(payload.mechanicalType)) {
+                return MechanicalType.findAll({ where: { id: payload.mechanicalType } })
+                    .then((types) => {
+                        if (_.isEmpty(types) || types.length !== payload.mechanicalType.length) {
+                            return cb('The mechanical type value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking mechanical type');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.waterSupplyType) {
+                return WaterSupplyType.findByPk(payload.waterSupplyType)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The type of water supply value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking type of water supply');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (!_.isEmpty(payload.identifications)) {
+                const identificationIds = payload.identifications.map((item) => item.identificationTypeId);
+
+                return IdentificationType.findAll({ where: { id: identificationIds } })
+                    .then((types) => {
+                        if (_.isEmpty(types) || types.length !== payload.identifications.length) {
+                            return cb('The identification array has incorrect identification type value');
+                        }
+
+                        async.eachLimit(payload.identifications, 5, (identificationObj, eachCb) => {
+                            const updatePayload = { ...identificationObj };
+                            delete updatePayload.id;
+
+                            Identification.update(updatePayload, { where: { id: identificationObj.id } })
+                                .then(() => {
+                                    eachCb();
+                                })
+                                .catch(() => {
+                                    return eachCb('something went wrong while updating the identifications');
+                                });
+                        }, (eachErr) => {
+                            if (eachErr) {
+                                return cb(eachErr);
+                            }
+                            return cb();
+                        });
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking identification types');
+                    });
+            }
+            cb();
+        },
+    ], (waterfallErr) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+
+        return callback();
     });
 };

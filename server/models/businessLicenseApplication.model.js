@@ -1,12 +1,8 @@
-import * as _ from 'lodash';
-
-let BusinessLicenseApplication;
-
 /**
- * Identification Schema
+ * BusinessLicenseApplication Schema
  */
 module.exports = (sequelize, DataTypes) => {
-    BusinessLicenseApplication = sequelize.define('BusinessLicenseApplication', {
+    const BusinessLicenseApplication = sequelize.define('BusinessLicenseApplication', {
         id: {
             type: DataTypes.BIGINT.UNSIGNED,
             autoIncrement: true,
