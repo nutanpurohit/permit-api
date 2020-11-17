@@ -11,6 +11,9 @@ router.route('/')
 router.route('/:id')
 
     /** GET /api/{version}/building-permit/:id - operations for specific building permit */
-    .get(buildingPermitCtrl.get);
+    .get(buildingPermitCtrl.get)
+
+    /** PUT /api/{version}/staff/building-permit - Update building permit info by the staff users */
+    .put(buildingPermitCtrl.updatePermitByStaff);
 
 export default router;

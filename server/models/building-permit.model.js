@@ -66,6 +66,16 @@ module.exports = (sequelize, DataTypes) => {
         ownerLesor: { type: DataTypes.STRING },
         currentAddress: { type: DataTypes.STRING(300) },
         applicationDate: { type: DataTypes.DATEONLY },
+
+        planReviewIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+        district: { type: DataTypes.STRING(300) },
+        use: { type: DataTypes.STRING(300) },
+        frontYard: { type: DataTypes.STRING(300) },
+        sideYard: { type: DataTypes.STRING(300) },
+        rearYard: { type: DataTypes.STRING(300) },
+        leaseOrAuthorization: { type: DataTypes.STRING(300) },
+        TLUCApprovalCondition: { type: DataTypes.STRING(600) },
+        agencyCommentIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
     });
 
     return BuildingPermit;

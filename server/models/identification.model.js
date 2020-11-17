@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 let Identification;
 
 /**
- * MechanicalType Schema
+ * Identification Schema
  */
 module.exports = (sequelize, DataTypes) => {
     Identification = sequelize.define('Identification', {
