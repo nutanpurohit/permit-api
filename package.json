@@ -72,10 +72,5 @@
         "jest-fetch-mock": "2.1.2",
         "jsdom": "15.1.1",
         "validate-commit-msg": "^2.6.1"
-    },
-    "husky": {
-        "hooks": {
-            "pre-commit": "esw *.js server config --color && jest"
-        }
     }
 }
