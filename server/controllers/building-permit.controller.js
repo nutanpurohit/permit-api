@@ -48,36 +48,75 @@ function create(req, res, next) {
 }
 
 /**
- * Update existing building permit
- *
- * @param req - The http request object
- * @param res - The http response object
- * @param next - The callback function
- */
-function update(req, res, next) {
-    // const { user } = req;
-    // user.username = req.body.username;
-    // user.mobileNumber = req.body.mobileNumber;
-    //
-    // user.save()
-    //     .then((savedUser) => res.json(savedUser))
-    //     .catch((e) => next(e));
-}
-
-/**
  * get specific building permit
  *
  * @param req - The http request object
  * @param res - The http response object
  * @param next - The callback function
  */
-function get(req, res, callback) {
-    // return res.json(req.user);
+function get(req, res, next) {
+    const permitId = req.params.id;
+
+    async.waterfall([
+        // find form details
+        (cb) => {
+            const processingData = {};
+            BuildingPermits.findOne({
+                where: { id: permitId },
+                raw: true,
+            })
+                .then((permitForm) => {
+                    if (_.isEmpty(permitForm)) {
+                        const e = new Error('The form with the given id do not exist');
+                        e.status = httpStatus.NOT_FOUND;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm = permitForm;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the form details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the identification records for this form
+        (processingData, cb) => {
+            const { indentificationIds } = processingData.permitForm;
+            if (_.isEmpty(indentificationIds)) {
+                return cb(null, processingData);
+            }
+
+            Identification.findAll({ where: { id: indentificationIds } })
+                .then((identifications) => {
+                    if (_.isEmpty(identifications) || identifications.length !== indentificationIds.length) {
+                        const e = new Error('Some of the identification information for this form is missing');
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm.identifications = identifications;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the identification details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+    ], (waterfallErr, processingData) => {
+        if (waterfallErr) {
+            return next(waterfallErr);
+        }
+
+        return res.json(processingData.permitForm);
+    });
 }
 
 
 export default {
-    get, create, update,
+    get, create,
 };
 
 const validateCreatePayload = (payload, callback) => {
