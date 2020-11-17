@@ -18,6 +18,8 @@ const winstonInstance = logger;
 
 const app = express();
 
+app.use(cors());
+
 // parse body params and attache them to req.body
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
