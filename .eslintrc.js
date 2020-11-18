@@ -11,6 +11,7 @@ module.exports = {
         "no-param-reassign": [0],
         "max-len": [0],
         "no-use-before-define": [0],
+        "no-restricted-globals": [0],
     },
     "parserOptions": {
         "sourceType": "module",

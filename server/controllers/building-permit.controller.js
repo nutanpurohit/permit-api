@@ -29,8 +29,6 @@ const {
     FormConfig,
 } = db;
 
-const PREFIX = 'P';
-
 /**
  * Create new building permit
  *
@@ -173,7 +171,6 @@ function updatePermit(req, res, next) {
 function get(req, res, next) {
     const permitId = req.params.id;
 
-    // eslint-disable-next-line no-use-before-define
     getCompletePermitForm(permitId, (err, response) => {
         if (err) {
             return next(err);
@@ -183,9 +180,94 @@ function get(req, res, next) {
     });
 }
 
+function getAll(req, res, next) {
+    const queryValidationErr = validateGetAllQuery(req.query);
+    if (queryValidationErr) {
+        const e = new Error(queryValidationErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+
+    const {
+        limit = 10,
+        start = 0,
+        sortColumn = 'id',
+        sortBy = 'DESC',
+    } = req.query;
+    const offset = start * limit;
+
+    const projection = customerPermitFormProjection();
+
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                buildingPermits: (done) => {
+                    BuildingPermits.findAll({
+                        attributes: projection,
+                        offset,
+                        limit,
+                        order: [
+                            [sortColumn, sortBy.toUpperCase()],
+                        ],
+                    })
+                        .then((buildingPermits) => {
+                            return done(null, buildingPermits);
+                        })
+                        .catch(done);
+                },
+                total: (done) => {
+                    BuildingPermits.count()
+                        .then((count) => {
+                            return done(null, count);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                const processingData = {
+                    buildingPermits: parallelRes.buildingPermits,
+                    total: parallelRes.total,
+                };
+
+                return cb(null, processingData);
+            });
+        },
+        (processingData, cb) => {
+            processingData.completeCustomerPermitForm = [];
+
+            async.eachSeries(processingData.buildingPermits, (buildingPermit, eachCb) => {
+                getCompleteCustomerPermitForm(buildingPermit.id, (err, response) => {
+                    if (err) {
+                        return eachCb(err);
+                    }
+
+                    processingData.completeCustomerPermitForm.push(response.permitForm);
+                    return eachCb();
+                });
+            }, (eachErr) => {
+                if (eachErr) {
+                    return cb(eachErr);
+                }
+                return cb(null, processingData);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+
+        const response = {
+            buildingPermits: processingData.completeCustomerPermitForm,
+            total: processingData.total,
+        };
+        return res.json(response);
+    });
+}
 
 export default {
-    get, create, updatePermitByStaff, updatePermit,
+    get, create, updatePermitByStaff, updatePermit, getAll,
 };
 
 const validateCreatePayload = (payload, callback) => {
@@ -510,7 +592,7 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
                     return cb(parallelErr);
                 }
 
-                const { applicationStatusType, latestBuildingPermit, formConfig } = parallelResult;
+                const { applicationStatusType, formConfig } = parallelResult;
                 const statusName = applicationStatusType.name.toLowerCase();
 
                 // we update permit number and Building permit number on approved
@@ -529,7 +611,7 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
                     updateFormConfig(permitNoConfig.id, permitNoConfig);
                     updateFormConfig(buildingPermitNoConfig.id, buildingPermitNoConfig);
                     return cb();
-                } else if (statusName === 'submit') {
+                } if (statusName === 'submit') {
                     const applicationNoConfig = formConfig.find((config) => config.formField === 'applicationNo');
                     if (!applicationNoConfig || permitForm.applicationNo) {
                         return cb();
@@ -540,32 +622,7 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
                     payload.applicationNo = `${applicationNoConfig.prefix}${applicationNoConfig.fiscalYear}${sequenceNumber}`;
                     updateFormConfig(applicationNoConfig.id, applicationNoConfig);
                     return cb();
-                } else {
-                    return cb();
                 }
-
-                if (
-                    _.isEmpty(formConfig)
-                    || applicationStatusType.name.toLowerCase() !== 'approved'
-                ) {
-                    return cb();
-                }
-                let sequenceNumber = '0001';
-                const fiscalYear = getFiscal();
-                payload.sequentialNo = 1;
-                payload.fiscalYear = fiscalYear;
-
-                if (!_.isEmpty(latestBuildingPermit)) {
-                    // if fiscal year is changed reset sequence no
-                    if (latestBuildingPermit.fiscalYear === fiscalYear) {
-                        sequenceNumber = (`0000${latestBuildingPermit.sequentialNo + 1}`).substr(-4, 4);
-                        payload.sequentialNo = latestBuildingPermit.sequentialNo + 1;
-                    }
-                }
-
-                payload.permitNo = `${PREFIX}${fiscalYear}${sequenceNumber}`;
-                payload.buildingPermitNo = `${PREFIX}${fiscalYear}${sequenceNumber}`;
-
                 return cb();
             });
         },
@@ -671,6 +728,115 @@ const getCompletePermitForm = (permitId, callback) => {
                 })
                 .catch(() => {
                     const e = new Error('Something went wrong while finding the plan review records');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the costs
+        (processingData, cb) => {
+            const { costIds } = processingData.permitForm;
+            if (_.isEmpty(costIds)) {
+                return cb(null, processingData);
+            }
+
+            CostBuildingPermit.findAll({ where: { id: costIds } })
+                .then((costs) => {
+                    if (_.isEmpty(costs) || costs.length !== costIds.length) {
+                        const e = new Error('Some of the cost information for this form is missing');
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm.costs = costs;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the costs');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the application status
+        (processingData, cb) => {
+            const { applicationStatusId } = processingData.permitForm;
+            if (!applicationStatusId) {
+                return cb(null, processingData);
+            }
+
+            ApplicationStatusType.findByPk(applicationStatusId)
+                .then((applicationStatusType) => {
+                    if (_.isEmpty(applicationStatusType)) {
+                        const e = new Error('The application status type is invalid');
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm.applicationStatus = applicationStatusType.name;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+    ], (waterfallErr, processingData) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+
+        delete processingData.permitForm.sequentialNo;
+        delete processingData.permitForm.fiscalYear;
+        callback(null, processingData);
+    });
+};
+
+const getCompleteCustomerPermitForm = (permitId, callback) => {
+    async.waterfall([
+        // find form details
+        (cb) => {
+            const processingData = {};
+            BuildingPermits.findOne({
+                where: { id: permitId },
+                attributes: customerPermitFormProjection(),
+                raw: true,
+            })
+                .then((permitForm) => {
+                    if (_.isEmpty(permitForm)) {
+                        const e = new Error('The form with the given id do not exist');
+                        e.status = httpStatus.NOT_FOUND;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm = permitForm;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the form details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the identification records for this form
+        (processingData, cb) => {
+            const { identificationIds } = processingData.permitForm;
+            if (_.isEmpty(identificationIds)) {
+                return cb(null, processingData);
+            }
+
+            Identification.findAll({ where: { id: identificationIds } })
+                .then((identifications) => {
+                    if (_.isEmpty(identifications) || identifications.length !== identificationIds.length) {
+                        const e = new Error('Some of the identification information for this form is missing');
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm.identifications = identifications;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the identification details');
                     e.status = httpStatus.INTERNAL_SERVER_ERROR;
                     return cb(e);
                 });
@@ -1028,26 +1194,6 @@ const getRelatedData = (payload, callback) => {
                 })
                 .catch(done);
         },
-        latestBuildingPermit: (done) => {
-            BuildingPermits.findAll({
-                where: {
-                    fiscalYear: {
-                        [Op.ne]: null,
-                    },
-                    sequentialNo: {
-                        [Op.ne]: null,
-                    },
-                },
-                limit: 1,
-                attributes: ['id', 'fiscalYear', 'sequentialNo'],
-                order: [['createdAt', 'DESC']],
-            })
-                .then((buildingPermits) => {
-                    const buildingPermit = _.isEmpty(buildingPermits) ? {} : buildingPermits[0];
-                    return done(null, buildingPermit);
-                })
-                .catch(done);
-        },
         formConfig: (done) => {
             FormConfig.findAll({
                 where: {
@@ -1079,4 +1225,100 @@ const updateFormConfig = (configId, configObj) => {
         fiscalYear: currentFiscalYear,
     };
     FormConfig.update(updateObj, { where: { id: configId } });
+};
+
+const validateGetAllQuery = (query) => {
+    const {
+        limit, start, sortColumn, sortBy,
+    } = query;
+    const allowedSortingColumn = [
+        'id',
+        'permitNo',
+        'applicationNo',
+        'locationNo',
+        'locationStreet',
+        'block',
+        'lotSize',
+        'createdAt',
+        'updatedAt',
+    ];
+    const allowedSortBy = ['asc', 'desc'];
+
+    if (!_.isUndefined(limit) && isNaN(limit)) {
+        return 'limit value should be integer';
+    }
+
+    if (!_.isUndefined(limit) && limit < 1) {
+        return 'limit value cannot be less than 1';
+    }
+
+    if (!_.isUndefined(start) && isNaN(start)) {
+        return 'start value should be integer';
+    }
+
+    if (!_.isUndefined(start) && start < 0) {
+        return 'start value cannot be less than 0';
+    }
+
+    if (!_.isUndefined(sortColumn) && !allowedSortingColumn.includes(sortColumn)) {
+        return 'The given sorting column is not supported';
+    }
+
+    if (!_.isUndefined(sortBy) && !allowedSortBy.includes(sortBy)) {
+        return 'The given sortBy value is not supported';
+    }
+
+    return null;
+};
+
+const customerPermitFormProjection = () => {
+    const projection = [
+        'id',
+        'permitNo',
+        'applicationNo',
+        'locationNo',
+        'locationStreet',
+        'zoningDistrict',
+        'crossStreet1',
+        'crossStreet2',
+        'subDivision',
+        'block',
+        'lotSize',
+        'groupOccupancy',
+        'constructionType',
+        'foundation',
+        'buildingType',
+        'otherBuildingType',
+        'buildingDimension',
+        'ownership',
+        'costIds',
+        'otherCost',
+        'improvementCostTotal',
+        'nonResidentialPurpose',
+        'residential',
+        'residentialNoOfFamily',
+        'residentialNoOfHotelMotel',
+        'otherResidential',
+        'nonResidential',
+        'otherNonResidential',
+        'principalTypeOfFrame',
+        'otherPrincipalTypeOfFrame',
+        'sewageDisposalType',
+        'mechanicalType',
+        'waterSupplyType',
+        'noOfStories',
+        'exteriorDimensions',
+        'totalLandArea',
+        'enclosedParking',
+        'outdoorsParking',
+        'noOfBedRoom',
+        'noOfBedRoomFull',
+        'noOfBedRoomPartial',
+        'identificationIds',
+        'ownerLesor',
+        'currentAddress',
+        'applicationDate',
+    ];
+
+    return projection;
 };
