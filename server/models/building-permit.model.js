@@ -9,6 +9,8 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             primaryKey: true,
         },
+        permitNo: { type: DataTypes.STRING },
+        applicationNo: { type: DataTypes.STRING },
         locationNo: { type: DataTypes.STRING },
         locationStreet: { type: DataTypes.STRING(300) },
         zoningDistrict: { type: DataTypes.STRING(300) },
@@ -72,10 +74,22 @@ module.exports = (sequelize, DataTypes) => {
         leaseOrAuthorization: { type: DataTypes.STRING(300) },
         TLUCApprovalCondition: { type: DataTypes.STRING(600) },
         agencyCommentIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+
+        buildingPermitNo: { type: DataTypes.STRING },
+        buildingPermitIssued: { type: DataTypes.DATEONLY },
+        permitApprovedBy: { type: DataTypes.STRING(300) },
+        approvedValuation: { type: DataTypes.STRING(300) },
+        planCheckingFee: { type: DataTypes.INTEGER },
+        record: { type: DataTypes.STRING },
+        buildingPermitFee: { type: DataTypes.INTEGER },
         validationTitle: { type: DataTypes.STRING(300) },
         validationDate: { type: DataTypes.DATEONLY },
         validationTotal: { type: DataTypes.BIGINT.UNSIGNED },
+
         applicationStatusId: { type: DataTypes.BIGINT.UNSIGNED },
+
+        sequentialNo: { type: DataTypes.INTEGER },
+        fiscalYear: { type: DataTypes.STRING },
 
     });
 

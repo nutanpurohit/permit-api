@@ -1,7 +1,11 @@
 import httpStatus from 'http-status';
 import * as _ from 'lodash';
 import async from 'async';
+import moment from 'moment';
+import Sequelize from 'sequelize';
 import db from '../../config/sequelize';
+
+const { Op } = Sequelize;
 
 const {
     BuildingType,
@@ -24,6 +28,8 @@ const {
     CostBuildingPermit,
 } = db;
 
+const PREFIX = 'P';
+
 /**
  * Create new building permit
  *
@@ -32,7 +38,8 @@ const {
  * @param next - The callback function
  */
 function create(req, res, next) {
-    const payload = req.body;
+    let payload = req.body;
+    payload = removeRestrictedFields(payload);
 
     // eslint-disable-next-line no-use-before-define
     validateCreatePayload(payload, (validationErr) => {
@@ -377,13 +384,15 @@ const validateCreatePayload = (payload, callback) => {
 };
 
 const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
+    let permitForm;
     async.waterfall([
         (cb) => {
             BuildingPermits.findOne({ where: { id: permitFormId } })
-                .then((permitForm) => {
-                    if (_.isEmpty(permitForm)) {
+                .then((record) => {
+                    if (_.isEmpty(record)) {
                         return cb('The permit form do not exist');
                     }
+                    permitForm = record;
                     cb();
                 })
                 .catch(() => {
@@ -487,6 +496,74 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
                     });
             }
             cb();
+        },
+        // generate the permit id
+        (cb) => {
+            // there is no application status in payload or if there is already the permit no generated then ignore
+            if (!payload.applicationStatusId || (permitForm.permitNo && permitForm.buildingPermitNo)) {
+                return cb();
+            }
+
+            async.parallel({
+                applicationStatusType: (done) => {
+                    ApplicationStatusType.findByPk(payload.applicationStatusId)
+                        .then((applicationStatusType) => {
+                            if (_.isEmpty(applicationStatusType)) {
+                                return done('The application status is incorrect');
+                            }
+
+                            return done(null, applicationStatusType);
+                        })
+                        .catch(done);
+                },
+                latestBuildingPermit: (done) => {
+                    BuildingPermits.findAll({
+                        where: {
+                            fiscalYear: {
+                                [Op.ne]: null,
+                            },
+                            sequentialNo: {
+                                [Op.ne]: null,
+                            },
+                        },
+                        limit: 1,
+                        attributes: ['id', 'fiscalYear', 'sequentialNo'],
+                        order: [['createdAt', 'DESC']],
+                    })
+                        .then((buildingPermits) => {
+                            const buildingPermit = _.isEmpty(buildingPermits) ? {} : buildingPermits[0];
+                            return done(null, buildingPermit);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelResult) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+
+                const { applicationStatusType, latestBuildingPermit } = parallelResult;
+
+                if (applicationStatusType.name.toLowerCase() !== 'approved') {
+                    return cb();
+                }
+                let sequenceNumber = '0001';
+                const fiscalYear = getFiscal();
+                payload.sequentialNo = 1;
+                payload.fiscalYear = fiscalYear;
+
+                if (!_.isEmpty(latestBuildingPermit)) {
+                    // if fiscal year is changed reset sequence no
+                    if (latestBuildingPermit.fiscalYear === fiscalYear) {
+                        sequenceNumber = (`0000${latestBuildingPermit.sequentialNo + 1}`).substr(-4, 4);
+                        payload.sequentialNo = latestBuildingPermit.sequentialNo + 1;
+                    }
+                }
+
+                payload.permitNo = `${PREFIX}${fiscalYear}${sequenceNumber}`;
+                payload.buildingPermitNo = `${PREFIX}${fiscalYear}${sequenceNumber}`;
+
+                return cb();
+            });
         },
     ], (waterfallErr) => {
         if (waterfallErr) {
@@ -647,6 +724,8 @@ const getCompletePermitForm = (permitId, callback) => {
             return callback(waterfallErr);
         }
 
+        delete processingData.permitForm.sequentialNo;
+        delete processingData.permitForm.fiscalYear;
         callback(null, processingData);
     });
 };
@@ -907,4 +986,27 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
 
         return callback();
     });
+};
+
+const removeRestrictedFields = (payload) => {
+    delete payload.buildingPermitNo;
+    delete payload.permitNo;
+    delete payload.applicationNo;
+    delete payload.sequentialNo;
+    delete payload.fiscalYear;
+
+    return payload;
+};
+
+const getFiscal = () => {
+    const currentDate = moment(new Date(), 'YYYY/MM/DD');
+    const currentMonth = currentDate.format('M');
+    let fiscalYear = '';
+    if (currentMonth >= 10) {
+        fiscalYear = currentDate.format('YYYY');
+    } else {
+        fiscalYear = moment(new Date()).subtract(1, 'years').format('YYYY');
+    }
+
+    return fiscalYear;
 };
