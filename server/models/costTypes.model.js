@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 let CostType;
 
 /**
- * ApplicationStatusType Schema
+ * CostType Schema
  */
 module.exports = (sequelize, DataTypes) => {
     CostType = sequelize.define('CostType', {

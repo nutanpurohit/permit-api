@@ -28,6 +28,7 @@ module.exports = (sequelize, DataTypes) => {
                         { name: 'Approved' },
                         { name: 'Save as Draft' },
                         { name: 'Sent' },
+                        { name: 'Submit' },
                     ]);
                 }
             });

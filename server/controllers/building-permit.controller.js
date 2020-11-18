@@ -26,6 +26,7 @@ const {
     ApplicationStatusType,
     CostType,
     CostBuildingPermit,
+    FormConfig,
 } = db;
 
 const PREFIX = 'P';
@@ -500,50 +501,53 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
         // generate the permit id
         (cb) => {
             // there is no application status in payload or if there is already the permit no generated then ignore
-            if (!payload.applicationStatusId || (permitForm.permitNo && permitForm.buildingPermitNo)) {
+            if (!payload.applicationStatusId) {
                 return cb();
             }
 
-            async.parallel({
-                applicationStatusType: (done) => {
-                    ApplicationStatusType.findByPk(payload.applicationStatusId)
-                        .then((applicationStatusType) => {
-                            if (_.isEmpty(applicationStatusType)) {
-                                return done('The application status is incorrect');
-                            }
-
-                            return done(null, applicationStatusType);
-                        })
-                        .catch(done);
-                },
-                latestBuildingPermit: (done) => {
-                    BuildingPermits.findAll({
-                        where: {
-                            fiscalYear: {
-                                [Op.ne]: null,
-                            },
-                            sequentialNo: {
-                                [Op.ne]: null,
-                            },
-                        },
-                        limit: 1,
-                        attributes: ['id', 'fiscalYear', 'sequentialNo'],
-                        order: [['createdAt', 'DESC']],
-                    })
-                        .then((buildingPermits) => {
-                            const buildingPermit = _.isEmpty(buildingPermits) ? {} : buildingPermits[0];
-                            return done(null, buildingPermit);
-                        })
-                        .catch(done);
-                },
-            }, (parallelErr, parallelResult) => {
+            getRelatedData(payload, (parallelErr, parallelResult) => {
                 if (parallelErr) {
                     return cb(parallelErr);
                 }
 
-                const { applicationStatusType, latestBuildingPermit } = parallelResult;
+                const { applicationStatusType, latestBuildingPermit, formConfig } = parallelResult;
+                const statusName = applicationStatusType.name.toLowerCase();
 
-                if (applicationStatusType.name.toLowerCase() !== 'approved') {
+                // we update permit number and Building permit number on approved
+                if (statusName === 'approved') {
+                    const permitNoConfig = formConfig.find((config) => config.formField === 'permitNo');
+                    const buildingPermitNoConfig = formConfig.find((config) => config.formField === 'buildingPermitNo');
+                    if (!permitNoConfig || !buildingPermitNoConfig || permitForm.permitNo || permitForm.buildingPermitNo) {
+                        return cb();
+                    }
+
+                    const permitSequenceNumber = (`0000${permitNoConfig.sequenceNo}`).substr(-4, 4);
+                    const buildingPermitSequenceNumber = (`0000${buildingPermitNoConfig.sequenceNo}`).substr(-4, 4);
+
+                    payload.permitNo = `${permitNoConfig.prefix}${permitNoConfig.fiscalYear}${permitSequenceNumber}`;
+                    payload.buildingPermitNo = `${buildingPermitNoConfig.prefix}${buildingPermitNoConfig.fiscalYear}${buildingPermitSequenceNumber}`;
+                    updateFormConfig(permitNoConfig.id, permitNoConfig);
+                    updateFormConfig(buildingPermitNoConfig.id, buildingPermitNoConfig);
+                    return cb();
+                } else if (statusName === 'submit') {
+                    const applicationNoConfig = formConfig.find((config) => config.formField === 'applicationNo');
+                    if (!applicationNoConfig || permitForm.applicationNo) {
+                        return cb();
+                    }
+
+                    const sequenceNumber = (`0000${applicationNoConfig.sequenceNo}`).substr(-4, 4);
+
+                    payload.applicationNo = `${applicationNoConfig.prefix}${applicationNoConfig.fiscalYear}${sequenceNumber}`;
+                    updateFormConfig(applicationNoConfig.id, applicationNoConfig);
+                    return cb();
+                } else {
+                    return cb();
+                }
+
+                if (
+                    _.isEmpty(formConfig)
+                    || applicationStatusType.name.toLowerCase() !== 'approved'
+                ) {
                     return cb();
                 }
                 let sequenceNumber = '0001';
@@ -998,7 +1002,7 @@ const removeRestrictedFields = (payload) => {
     return payload;
 };
 
-const getFiscal = () => {
+const getFiscalYear = () => {
     const currentDate = moment(new Date(), 'YYYY/MM/DD');
     const currentMonth = currentDate.format('M');
     let fiscalYear = '';
@@ -1009,4 +1013,70 @@ const getFiscal = () => {
     }
 
     return fiscalYear;
+};
+
+const getRelatedData = (payload, callback) => {
+    async.parallel({
+        applicationStatusType: (done) => {
+            ApplicationStatusType.findByPk(payload.applicationStatusId)
+                .then((applicationStatusType) => {
+                    if (_.isEmpty(applicationStatusType)) {
+                        return done('The application status is incorrect');
+                    }
+
+                    return done(null, applicationStatusType);
+                })
+                .catch(done);
+        },
+        latestBuildingPermit: (done) => {
+            BuildingPermits.findAll({
+                where: {
+                    fiscalYear: {
+                        [Op.ne]: null,
+                    },
+                    sequentialNo: {
+                        [Op.ne]: null,
+                    },
+                },
+                limit: 1,
+                attributes: ['id', 'fiscalYear', 'sequentialNo'],
+                order: [['createdAt', 'DESC']],
+            })
+                .then((buildingPermits) => {
+                    const buildingPermit = _.isEmpty(buildingPermits) ? {} : buildingPermits[0];
+                    return done(null, buildingPermit);
+                })
+                .catch(done);
+        },
+        formConfig: (done) => {
+            FormConfig.findAll({
+                where: {
+                    formType: 'buildingPermit',
+                    formField: ['permitNo', 'applicationNo', 'buildingPermitNo'],
+                },
+            })
+                .then((formConfigs) => {
+                    return done(null, formConfigs);
+                })
+                .catch(done);
+        },
+    }, callback);
+};
+
+const updateFormConfig = (configId, configObj) => {
+    let currentFiscalYear;
+    if (configObj.formField === 'permitNo') {
+        currentFiscalYear = getFiscalYear();
+    }
+    if (configObj.formField === 'applicationNo') {
+        currentFiscalYear = getFiscalYear().substr(2);
+    }
+    if (configObj.formField === 'buildingPermitNo') {
+        currentFiscalYear = getFiscalYear().substr(2);
+    }
+    const updateObj = {
+        sequenceNo: configObj.sequenceNo + 1,
+        fiscalYear: currentFiscalYear,
+    };
+    FormConfig.update(updateObj, { where: { id: configId } });
 };
