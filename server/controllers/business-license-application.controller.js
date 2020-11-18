@@ -78,7 +78,7 @@ const validateCreatePayload = (payload, callback) => {
             if (!_.isEmpty(payload.clearanceTypeIds)) {
                 return ClearanceType.findAll({ where: { id: payload.clearanceTypeIds } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.clearanceTypeIds.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The clearance type value is incorrect');
                         }
                         cb();

@@ -24,10 +24,7 @@ module.exports = (sequelize, DataTypes) => {
         otherBuildingType: { type: DataTypes.STRING(300) },
         buildingDimension: { type: DataTypes.STRING(300) },
         ownership: { type: DataTypes.BIGINT },
-        improvementsCost: { type: DataTypes.BIGINT.UNSIGNED },
-        electricalCost: { type: DataTypes.BIGINT.UNSIGNED },
-        plumbingCost: { type: DataTypes.BIGINT.UNSIGNED },
-        heatingAndACCost: { type: DataTypes.BIGINT.UNSIGNED },
+        costIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
         otherCost: { type: DataTypes.BIGINT.UNSIGNED },
         improvementCostTotal: { type: DataTypes.BIGINT.UNSIGNED },
         nonResidentialPurpose: { type: DataTypes.STRING(600) },
@@ -36,7 +33,6 @@ module.exports = (sequelize, DataTypes) => {
         residentialNoOfFamily: { type: DataTypes.BIGINT.UNSIGNED },
         residentialNoOfHotelMotel: { type: DataTypes.BIGINT.UNSIGNED },
         otherResidential: { type: DataTypes.STRING },
-
 
         nonResidential: { type: DataTypes.BIGINT.UNSIGNED },
         otherNonResidential: { type: DataTypes.STRING },
@@ -79,7 +75,6 @@ module.exports = (sequelize, DataTypes) => {
         validationTitle: { type: DataTypes.STRING(300) },
         validationDate: { type: DataTypes.DATEONLY },
         validationTotal: { type: DataTypes.BIGINT.UNSIGNED },
-
         applicationStatusId: { type: DataTypes.BIGINT.UNSIGNED },
 
     });

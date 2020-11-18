@@ -20,6 +20,8 @@ const {
     PlanReview,
     PlanReviewType,
     ApplicationStatusType,
+    CostType,
+    CostBuildingPermit,
 } = db;
 
 /**
@@ -184,7 +186,7 @@ const validateCreatePayload = (payload, callback) => {
             if (!_.isEmpty(payload.buildingType)) {
                 return BuildingType.findAll({ where: { id: payload.buildingType } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.buildingType.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The building type value is incorrect');
                         }
                         cb();
@@ -289,7 +291,7 @@ const validateCreatePayload = (payload, callback) => {
             if (!_.isEmpty(payload.mechanicalType)) {
                 return MechanicalType.findAll({ where: { id: payload.mechanicalType } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.mechanicalType.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The mechanical type value is incorrect');
                         }
                         cb();
@@ -321,7 +323,7 @@ const validateCreatePayload = (payload, callback) => {
 
                 return IdentificationType.findAll({ where: { id: identificationIds } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.identifications.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The identification array has incorrect identification type value');
                         }
 
@@ -336,6 +338,31 @@ const validateCreatePayload = (payload, callback) => {
                     })
                     .catch(() => {
                         return cb('something went wrong while checking identification types');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (!_.isEmpty(payload.costs)) {
+                const costTypeIds = payload.costs.map((item) => item.costTypeId);
+
+                return CostType.findAll({ where: { id: costTypeIds } })
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The costs array has incorrect cost type value');
+                        }
+
+                        CostBuildingPermit.bulkCreate(payload.costs)
+                            .then((createdRecords) => {
+                                payload.costIds = createdRecords.map((obj) => obj.id);
+                                cb();
+                            })
+                            .catch(() => {
+                                return cb('something went wrong while creating the costs');
+                            });
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking cost types');
                     });
             }
             cb();
@@ -369,7 +396,7 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
 
                 return PlanReviewType.findAll({ where: { id: reviewTypeIds } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.planReviewRecords.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The plan review records array has incorrect review type value');
                         }
 
@@ -418,7 +445,7 @@ const validateCreateForStaffPayload = (permitFormId, payload, callback) => {
 
                 return AgencyType.findAll({ where: { id: agencyTypeIds } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.agencyComments.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The agency comments array has incorrect agency type value');
                         }
 
@@ -567,6 +594,30 @@ const getCompletePermitForm = (permitId, callback) => {
                     return cb(e);
                 });
         },
+        // find the costs
+        (processingData, cb) => {
+            const { costIds } = processingData.permitForm;
+            if (_.isEmpty(costIds)) {
+                return cb(null, processingData);
+            }
+
+            CostBuildingPermit.findAll({ where: { id: costIds } })
+                .then((costs) => {
+                    if (_.isEmpty(costs) || costs.length !== costIds.length) {
+                        const e = new Error('Some of the cost information for this form is missing');
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm.costs = costs;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the costs');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
         // find the application status
         (processingData, cb) => {
             const { applicationStatusId } = processingData.permitForm;
@@ -618,7 +669,7 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
             if (!_.isEmpty(payload.buildingType)) {
                 return BuildingType.findAll({ where: { id: payload.buildingType } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.buildingType.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The building type value is incorrect');
                         }
                         cb();
@@ -723,7 +774,7 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
             if (!_.isEmpty(payload.mechanicalType)) {
                 return MechanicalType.findAll({ where: { id: payload.mechanicalType } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.mechanicalType.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The mechanical type value is incorrect');
                         }
                         cb();
@@ -755,21 +806,37 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
 
                 return IdentificationType.findAll({ where: { id: identificationIds } })
                     .then((types) => {
-                        if (_.isEmpty(types) || types.length !== payload.identifications.length) {
+                        if (_.isEmpty(types)) {
                             return cb('The identification array has incorrect identification type value');
                         }
 
                         async.eachLimit(payload.identifications, 5, (identificationObj, eachCb) => {
-                            const updatePayload = { ...identificationObj };
-                            delete updatePayload.id;
+                            payload.identificationIds = [];
 
-                            Identification.update(updatePayload, { where: { id: identificationObj.id } })
-                                .then(() => {
-                                    eachCb();
-                                })
-                                .catch(() => {
-                                    return eachCb('something went wrong while updating the identifications');
-                                });
+                            if (!identificationObj.id) {
+                                // create
+                                Identification.create(identificationObj)
+                                    .then((createdRecords) => {
+                                        payload.identificationIds.push(createdRecords.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while creating the identification records');
+                                    });
+                            } else {
+                                // update
+                                const updatePayload = { ...identificationObj };
+                                delete updatePayload.id;
+
+                                Identification.update(updatePayload, { where: { id: identificationObj.id } })
+                                    .then(() => {
+                                        payload.identificationIds.push(identificationObj.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while updating the identifications');
+                                    });
+                            }
                         }, (eachErr) => {
                             if (eachErr) {
                                 return cb(eachErr);
@@ -779,6 +846,56 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
                     })
                     .catch(() => {
                         return cb('something went wrong while checking identification types');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (!_.isEmpty(payload.costs)) {
+                const costTypeIds = payload.costs.map((item) => item.costTypeId);
+
+                return CostType.findAll({ where: { id: costTypeIds } })
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The costs array has incorrect cost type value');
+                        }
+
+                        async.eachLimit(payload.costs, 5, (costObj, eachCb) => {
+                            payload.costIds = [];
+
+                            if (!costObj.id) {
+                                // create
+                                CostBuildingPermit.create(costObj)
+                                    .then((createdRecords) => {
+                                        payload.costIds.push(createdRecords.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while creating the cost records');
+                                    });
+                            } else {
+                                // update
+                                const updatePayload = { ...costObj };
+                                delete updatePayload.id;
+
+                                CostBuildingPermit.update(updatePayload, { where: { id: costObj.id } })
+                                    .then(() => {
+                                        payload.costIds.push(costObj.id);
+                                        eachCb();
+                                    })
+                                    .catch(() => {
+                                        return eachCb('something went wrong while updating the costs');
+                                    });
+                            }
+                        }, (eachErr) => {
+                            if (eachErr) {
+                                return cb(eachErr);
+                            }
+                            return cb();
+                        });
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking cost types');
                     });
             }
             cb();
