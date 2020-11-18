@@ -1318,6 +1318,8 @@ const customerPermitFormProjection = () => {
         'ownerLesor',
         'currentAddress',
         'applicationDate',
+        'createdAt',
+        'updatedAt',
     ];
 
     return projection;

@@ -83,13 +83,13 @@ function getAll(req, res, next) {
     } = req.query;
     const offset = start * limit;
 
-    const projection = customerPermitFormProjection();
+    const projection = businessLicenseProjection();
 
     async.waterfall([
         (cb) => {
             async.parallel({
-                buildingPermits: (done) => {
-                    BuildingPermits.findAll({
+                businessLicenseApplications: (done) => {
+                    BusinessLicenseApplication.findAll({
                         attributes: projection,
                         offset,
                         limit,
@@ -97,13 +97,13 @@ function getAll(req, res, next) {
                             [sortColumn, sortBy.toUpperCase()],
                         ],
                     })
-                        .then((buildingPermits) => {
-                            return done(null, buildingPermits);
+                        .then((records) => {
+                            return done(null, records);
                         })
                         .catch(done);
                 },
                 total: (done) => {
-                    BuildingPermits.count()
+                    BusinessLicenseApplication.count()
                         .then((count) => {
                             return done(null, count);
                         })
@@ -114,7 +114,7 @@ function getAll(req, res, next) {
                     return cb(parallelErr);
                 }
                 const processingData = {
-                    buildingPermits: parallelRes.buildingPermits,
+                    businessLicenseApplications: parallelRes.businessLicenseApplications,
                     total: parallelRes.total,
                 };
 
@@ -122,15 +122,15 @@ function getAll(req, res, next) {
             });
         },
         (processingData, cb) => {
-            processingData.completeCustomerPermitForm = [];
+            processingData.completeApplications = [];
 
-            async.eachSeries(processingData.buildingPermits, (buildingPermit, eachCb) => {
-                getCompleteCustomerPermitForm(buildingPermit.id, (err, response) => {
+            async.eachSeries(processingData.businessLicenseApplications, (applicationObj, eachCb) => {
+                getCompleteLicenseApplicationForm(applicationObj.id, (err, response) => {
                     if (err) {
                         return eachCb(err);
                     }
 
-                    processingData.completeCustomerPermitForm.push(response.permitForm);
+                    processingData.completeApplications.push(response.applicationForm);
                     return eachCb();
                 });
             }, (eachErr) => {
@@ -146,7 +146,7 @@ function getAll(req, res, next) {
         }
 
         const response = {
-            buildingPermits: processingData.completeCustomerPermitForm,
+            businessLicenseApplications: processingData.completeApplications,
             total: processingData.total,
         };
         return res.json(response);
@@ -277,12 +277,19 @@ const validateGetAllQuery = (query) => {
     } = query;
     const allowedSortingColumn = [
         'id',
-        'permitNo',
-        'applicationNo',
-        'locationNo',
-        'locationStreet',
-        'block',
-        'lotSize',
+        'ssn',
+        'ein',
+        'email',
+        'GRTAccountNo',
+        'applicantFullName',
+        'registrationNo',
+        'businessLocation',
+        'businessAs',
+        'organizationTypeId',
+        'isApplicantRealPartyInterest',
+        'partyName',
+        'submitDate',
+        'applicationStatusId',
         'createdAt',
         'updatedAt',
     ];
@@ -313,4 +320,40 @@ const validateGetAllQuery = (query) => {
     }
 
     return null;
+};
+
+const businessLicenseProjection = () => {
+    const projection = [
+        'id',
+        'clearanceTypeIds',
+        'ssn',
+        'ein',
+        'cellPhoneNo',
+        'officeNo',
+        'email',
+        'GRTAccountNo',
+        'BLBComments',
+        'applicantFullName',
+        'registrationNo',
+        'mailingAddress',
+        'businessLocation',
+        'businessActivityDescription',
+        'businessAs',
+        'organizationTypeId',
+        'isApplicantRealPartyInterest',
+        'partyName',
+        'partyAddress',
+        'applicantSignature',
+        'applicantTitle',
+        'submitDate',
+        'branchIsApplicantRealPartyInterest',
+        'branchRemarks',
+        'branchApproveDate',
+        'issuedLicenseNo',
+        'applicationStatusId',
+        'createdAt',
+        'updatedAt',
+    ];
+
+    return projection;
 };
