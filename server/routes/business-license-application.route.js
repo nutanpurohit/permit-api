@@ -5,6 +5,9 @@ const router = express.Router(); // eslint-disable-line new-cap
 
 router.route('/')
 
+    /** GET /api/{version}/business-license-application - Get all business-license-application records */
+    .get(businessLicenseApplicationCtrl.getAll)
+
     /** POST /api/{version}/business-license-application - Create new business-license-application record */
     .post(businessLicenseApplicationCtrl.create);
 

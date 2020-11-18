@@ -67,9 +67,94 @@ function get(req, res, next) {
     });
 }
 
+function getAll(req, res, next) {
+    const queryValidationErr = validateGetAllQuery(req.query);
+    if (queryValidationErr) {
+        const e = new Error(queryValidationErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+
+    const {
+        limit = 10,
+        start = 0,
+        sortColumn = 'id',
+        sortBy = 'DESC',
+    } = req.query;
+    const offset = start * limit;
+
+    const projection = customerPermitFormProjection();
+
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                buildingPermits: (done) => {
+                    BuildingPermits.findAll({
+                        attributes: projection,
+                        offset,
+                        limit,
+                        order: [
+                            [sortColumn, sortBy.toUpperCase()],
+                        ],
+                    })
+                        .then((buildingPermits) => {
+                            return done(null, buildingPermits);
+                        })
+                        .catch(done);
+                },
+                total: (done) => {
+                    BuildingPermits.count()
+                        .then((count) => {
+                            return done(null, count);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                const processingData = {
+                    buildingPermits: parallelRes.buildingPermits,
+                    total: parallelRes.total,
+                };
+
+                return cb(null, processingData);
+            });
+        },
+        (processingData, cb) => {
+            processingData.completeCustomerPermitForm = [];
+
+            async.eachSeries(processingData.buildingPermits, (buildingPermit, eachCb) => {
+                getCompleteCustomerPermitForm(buildingPermit.id, (err, response) => {
+                    if (err) {
+                        return eachCb(err);
+                    }
+
+                    processingData.completeCustomerPermitForm.push(response.permitForm);
+                    return eachCb();
+                });
+            }, (eachErr) => {
+                if (eachErr) {
+                    return cb(eachErr);
+                }
+                return cb(null, processingData);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+
+        const response = {
+            buildingPermits: processingData.completeCustomerPermitForm,
+            total: processingData.total,
+        };
+        return res.json(response);
+    });
+}
 
 export default {
-    get, create,
+    get, create, getAll,
 };
 
 const validateCreatePayload = (payload, callback) => {
@@ -184,4 +269,48 @@ const getCompleteLicenseApplicationForm = (applicationId, callback) => {
 
         callback(null, processingData);
     });
+};
+
+const validateGetAllQuery = (query) => {
+    const {
+        limit, start, sortColumn, sortBy,
+    } = query;
+    const allowedSortingColumn = [
+        'id',
+        'permitNo',
+        'applicationNo',
+        'locationNo',
+        'locationStreet',
+        'block',
+        'lotSize',
+        'createdAt',
+        'updatedAt',
+    ];
+    const allowedSortBy = ['asc', 'desc'];
+
+    if (!_.isUndefined(limit) && isNaN(limit)) {
+        return 'limit value should be integer';
+    }
+
+    if (!_.isUndefined(limit) && limit < 1) {
+        return 'limit value cannot be less than 1';
+    }
+
+    if (!_.isUndefined(start) && isNaN(start)) {
+        return 'start value should be integer';
+    }
+
+    if (!_.isUndefined(start) && start < 0) {
+        return 'start value cannot be less than 0';
+    }
+
+    if (!_.isUndefined(sortColumn) && !allowedSortingColumn.includes(sortColumn)) {
+        return 'The given sorting column is not supported';
+    }
+
+    if (!_.isUndefined(sortBy) && !allowedSortBy.includes(sortBy)) {
+        return 'The given sortBy value is not supported';
+    }
+
+    return null;
 };
