@@ -34,6 +34,7 @@ module.exports = (sequelize, DataTypes) => {
         branchRemarks: { type: DataTypes.STRING(600) },
         branchApproveDate: { type: DataTypes.DATEONLY },
         issuedLicenseNo: { type: DataTypes.STRING(300) },
+        applicationStatusId: { type: DataTypes.BIGINT.UNSIGNED },
     });
 
     BusinessLicenseApplication.sync();

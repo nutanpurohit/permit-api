@@ -7,6 +7,7 @@ const {
     BusinessLicenseApplication,
     OrganizationType,
     ClearanceType,
+    ApplicationStatusType,
 } = db;
 
 /**
@@ -29,9 +30,16 @@ function create(req, res, next) {
 
         BusinessLicenseApplication.create(payload)
             .then((createdRecord) => {
-                return res.json(createdRecord);
+                // eslint-disable-next-line no-use-before-define
+                getCompleteLicenseApplicationForm(createdRecord.id, (err, response) => {
+                    if (err) {
+                        return next(err);
+                    }
+
+                    return res.json(response.applicationForm);
+                });
             })
-            .catch((err) => {
+            .catch(() => {
                 const e = new Error('An error occurred while posting the business license application form');
                 e.status = httpStatus.INTERNAL_SERVER_ERROR;
                 return next(e);
@@ -96,6 +104,21 @@ const validateCreatePayload = (payload, callback) => {
             }
             cb();
         },
+        (cb) => {
+            if (payload.applicationStatusId) {
+                return ApplicationStatusType.findByPk(payload.applicationStatusId)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The application status type value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking application status type');
+                    });
+            }
+            cb();
+        },
     ], (waterfallErr) => {
         if (waterfallErr) {
             return callback(waterfallErr);
@@ -126,6 +149,30 @@ const getCompleteLicenseApplicationForm = (applicationId, callback) => {
                 })
                 .catch(() => {
                     const e = new Error('Something went wrong while finding the business license application form details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the application status
+        (processingData, cb) => {
+            const { applicationStatusId } = processingData.applicationForm;
+            if (!applicationStatusId) {
+                return cb(null, processingData);
+            }
+
+            ApplicationStatusType.findByPk(applicationStatusId)
+                .then((applicationStatusType) => {
+                    if (_.isEmpty(applicationStatusType)) {
+                        const e = new Error('The application status type is invalid');
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    }
+
+                    processingData.applicationForm.applicationStatus = applicationStatusType.name;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding application status');
                     e.status = httpStatus.INTERNAL_SERVER_ERROR;
                     return cb(e);
                 });

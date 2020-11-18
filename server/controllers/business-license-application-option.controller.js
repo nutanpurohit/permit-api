@@ -5,6 +5,7 @@ import db from '../../config/sequelize';
 const {
     ClearanceType,
     OrganizationType,
+    ApplicationStatusType,
 } = db;
 
 
@@ -27,6 +28,14 @@ function getAll(req, res, next) {
         },
         organizationType: (cb) => {
             OrganizationType
+                .findAll()
+                .then((allTypes) => cb(null, allTypes))
+                .catch((err) => {
+                    cb(err);
+                });
+        },
+        applicationStatusTypes: (cb) => {
+            ApplicationStatusType
                 .findAll()
                 .then((allTypes) => cb(null, allTypes))
                 .catch((err) => {

@@ -80,6 +80,8 @@ module.exports = (sequelize, DataTypes) => {
         validationDate: { type: DataTypes.DATEONLY },
         validationTotal: { type: DataTypes.BIGINT.UNSIGNED },
 
+        applicationStatusId: { type: DataTypes.BIGINT.UNSIGNED },
+
     });
 
     return BuildingPermit;

@@ -19,6 +19,7 @@ const {
     AgencyType,
     PlanReview,
     PlanReviewType,
+    ApplicationStatusType,
 } = db;
 
 /**
@@ -265,6 +266,21 @@ const validateCreatePayload = (payload, callback) => {
                     })
                     .catch(() => {
                         return cb('something went wrong while checking type of sewage disposal');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.applicationStatusId) {
+                return ApplicationStatusType.findByPk(payload.applicationStatusId)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The application status type value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking application status type');
                     });
             }
             cb();
@@ -551,6 +567,30 @@ const getCompletePermitForm = (permitId, callback) => {
                     return cb(e);
                 });
         },
+        // find the application status
+        (processingData, cb) => {
+            const { applicationStatusId } = processingData.permitForm;
+            if (!applicationStatusId) {
+                return cb(null, processingData);
+            }
+
+            ApplicationStatusType.findByPk(applicationStatusId)
+                .then((applicationStatusType) => {
+                    if (_.isEmpty(applicationStatusType)) {
+                        const e = new Error('The application status type is invalid');
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    }
+
+                    processingData.permitForm.applicationStatus = applicationStatusType.name;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
     ], (waterfallErr, processingData) => {
         if (waterfallErr) {
             return callback(waterfallErr);
@@ -660,6 +700,21 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
                     })
                     .catch(() => {
                         return cb('something went wrong while checking type of sewage disposal');
+                    });
+            }
+            cb();
+        },
+        (cb) => {
+            if (payload.applicationStatusId) {
+                return ApplicationStatusType.findByPk(payload.applicationStatusId)
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The type of application status value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking application status type');
                     });
             }
             cb();
