@@ -15,7 +15,6 @@ const {
     PlanReviewType,
     AgencyType,
     ApplicationStatusType,
-    CostType,
 } = db;
 
 
@@ -118,14 +117,6 @@ function getAll(req, res, next) {
         },
         applicationStatusTypes: (cb) => {
             ApplicationStatusType
-                .findAll()
-                .then((allTypes) => cb(null, allTypes))
-                .catch((err) => {
-                    cb(err);
-                });
-        },
-        costTypes: (cb) => {
-            CostType
                 .findAll()
                 .then((allTypes) => cb(null, allTypes))
                 .catch((err) => {

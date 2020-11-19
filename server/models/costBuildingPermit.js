@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             primaryKey: true,
         },
-        costTypeId: { type: DataTypes.BIGINT.UNSIGNED },
+        costType: { type: DataTypes.STRING },
         cost: { type: DataTypes.INTEGER },
     });
 

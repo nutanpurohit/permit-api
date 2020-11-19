@@ -24,7 +24,6 @@ const {
     PlanReview,
     PlanReviewType,
     ApplicationStatusType,
-    CostType,
     CostBuildingPermit,
     FormConfig,
     FormComment,
@@ -542,25 +541,13 @@ const validateCreatePayload = (payload, callback) => {
         },
         (cb) => {
             if (!_.isEmpty(payload.costs)) {
-                const costTypeIds = payload.costs.map((item) => item.costTypeId);
-
-                return CostType.findAll({ where: { id: costTypeIds } })
-                    .then((types) => {
-                        if (_.isEmpty(types)) {
-                            return cb('The costs array has incorrect cost type value');
-                        }
-
-                        CostBuildingPermit.bulkCreate(payload.costs)
-                            .then((createdRecords) => {
-                                payload.costIds = createdRecords.map((obj) => obj.id);
-                                cb();
-                            })
-                            .catch(() => {
-                                return cb('something went wrong while creating the costs');
-                            });
+                return CostBuildingPermit.bulkCreate(payload.costs)
+                    .then((createdRecords) => {
+                        payload.costIds = createdRecords.map((obj) => obj.id);
+                        cb();
                     })
                     .catch(() => {
-                        return cb('something went wrong while checking cost types');
+                        return cb('something went wrong while creating the costs');
                     });
             }
             cb();
@@ -1263,51 +1250,40 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
         },
         (cb) => {
             if (!_.isEmpty(payload.costs)) {
-                const costTypeIds = payload.costs.map((item) => item.costTypeId);
 
-                return CostType.findAll({ where: { id: costTypeIds } })
-                    .then((types) => {
-                        if (_.isEmpty(types)) {
-                            return cb('The costs array has incorrect cost type value');
-                        }
+                return async.eachLimit(payload.costs, 5, (costObj, eachCb) => {
+                    payload.costIds = [];
 
-                        async.eachLimit(payload.costs, 5, (costObj, eachCb) => {
-                            payload.costIds = [];
+                    if (!costObj.id) {
+                        // create
+                        CostBuildingPermit.create(costObj)
+                            .then((createdRecords) => {
+                                payload.costIds.push(createdRecords.id);
+                                eachCb();
+                            })
+                            .catch(() => {
+                                return eachCb('something went wrong while creating the cost records');
+                            });
+                    } else {
+                        // update
+                        const updatePayload = { ...costObj };
+                        delete updatePayload.id;
 
-                            if (!costObj.id) {
-                                // create
-                                CostBuildingPermit.create(costObj)
-                                    .then((createdRecords) => {
-                                        payload.costIds.push(createdRecords.id);
-                                        eachCb();
-                                    })
-                                    .catch(() => {
-                                        return eachCb('something went wrong while creating the cost records');
-                                    });
-                            } else {
-                                // update
-                                const updatePayload = { ...costObj };
-                                delete updatePayload.id;
-
-                                CostBuildingPermit.update(updatePayload, { where: { id: costObj.id } })
-                                    .then(() => {
-                                        payload.costIds.push(costObj.id);
-                                        eachCb();
-                                    })
-                                    .catch(() => {
-                                        return eachCb('something went wrong while updating the costs');
-                                    });
-                            }
-                        }, (eachErr) => {
-                            if (eachErr) {
-                                return cb(eachErr);
-                            }
-                            return cb();
-                        });
-                    })
-                    .catch(() => {
-                        return cb('something went wrong while checking cost types');
-                    });
+                        CostBuildingPermit.update(updatePayload, { where: { id: costObj.id } })
+                            .then(() => {
+                                payload.costIds.push(costObj.id);
+                                eachCb();
+                            })
+                            .catch(() => {
+                                return eachCb('something went wrong while updating the costs');
+                            });
+                    }
+                }, (eachErr) => {
+                    if (eachErr) {
+                        return cb(eachErr);
+                    }
+                    return cb();
+                });
             }
             cb();
         },
