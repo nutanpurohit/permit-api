@@ -87,13 +87,25 @@ function create(req, res, next) {
                             },
                         };
 
-                        BuildingPermits.update(updates, updateOption)
-                            .then(() => {
-                                res.json({
-                                    status: 'File uploaded successfully',
-                                });
-                            })
-                            .catch(next);
+                        if (formType === 'buildingPermit') {
+                            BuildingPermits.update(updates, updateOption)
+                                .then(() => {
+                                    res.json({
+                                        status: 'File uploaded successfully',
+                                    });
+                                })
+                                .catch(next);
+                        } else if (formType === 'businessLicense') {
+                            BusinessLicenseApplication.update(updates, updateOption)
+                                .then(() => {
+                                    res.json({
+                                        status: 'File uploaded successfully',
+                                    });
+                                })
+                                .catch(next);
+                        } else {
+                            return next();
+                        }
                     })
                     .catch(next);
                 // eslint-disable-next-line no-shadow
@@ -106,8 +118,85 @@ function create(req, res, next) {
     });
 }
 
+function deleteAttachment(req, res, next) {
+    const { formType, formId, attachmentId } = req.params;
+
+    const formTypeErr = validateAllowedFormType(formType);
+
+    if (formTypeErr) {
+        const e = new Error(formTypeErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+
+    async.waterfall([
+        // find the form
+        (cb) => {
+            validateAllowedFormExist(formType, formId, (err, form) => {
+                if (err) {
+                    const e = new Error(err);
+                    e.status = httpStatus.BAD_REQUEST;
+                    return cb(e);
+                }
+
+                const processingData = {
+                    form,
+                };
+                return cb(null, processingData);
+            });
+        },
+        // delete the attachment
+        (processingData, cb) => {
+            FormAttachment.destroy({ where: { id: attachmentId } })
+                .then(() => {
+                    return cb(null, processingData);
+                })
+                .catch(cb);
+        },
+        // update the attachments for the form
+        (processingData, cb) => {
+            const { attachments } = processingData.form;
+            const index = attachments.indexOf(attachmentId);
+            if (index !== -1) {
+                attachments.splice(index, 1);
+            }
+
+            const updates = { attachments };
+
+            const updateOption = {
+                where: {
+                    id: formId,
+                },
+            };
+
+            if (formType === 'buildingPermit') {
+                BuildingPermits.update(updates, updateOption)
+                    .then(() => {
+                        cb();
+                    })
+                    .catch(next);
+            } else if (formType === 'businessLicense') {
+                BusinessLicenseApplication.update(updates, updateOption)
+                    .then(() => {
+                        cb();
+                    })
+                    .catch(next);
+            } else {
+                return cb();
+            }
+        },
+    ], (err) => {
+        if (err) {
+            return next(err);
+        }
+        return res.json({
+            status: 'File removed successfully',
+        });
+    });
+}
+
 export default {
-    create,
+    create, deleteAttachment,
 };
 
 const validateAllowedFormType = (formType) => {
@@ -120,12 +209,15 @@ const validateAllowedFormType = (formType) => {
 
 const validateAllowedFormExist = (formType, formId, callback) => {
     if (formType === 'buildingPermit') {
-        return BuildingPermits.findByPk(formId)
+        return BuildingPermits.findOne({
+            where: { id: formId },
+            attributes: ['id', 'attachments'],
+        })
             .then((permitForm) => {
                 if (_.isEmpty(permitForm)) {
                     return callback('The building permit form do not exist');
                 }
-                return callback();
+                return callback(null, permitForm);
             })
             .catch(() => {
                 return callback('something went wrong while finding building permit form');
@@ -133,12 +225,15 @@ const validateAllowedFormExist = (formType, formId, callback) => {
     }
 
     if (formType === 'businessLicense') {
-        return BusinessLicenseApplication.findByPk(formId)
+        return BusinessLicenseApplication.findOne({
+            where: { id: formId },
+            attributes: ['id', 'attachments'],
+        })
             .then((applicationForm) => {
                 if (_.isEmpty(applicationForm)) {
                     return callback('The business license application form do not exist');
                 }
-                return callback();
+                return callback(null, applicationForm);
             })
             .catch(() => {
                 return callback('something went wrong while finding business license application');
