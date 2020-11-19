@@ -1333,17 +1333,23 @@ const customerPermitFormProjection = () => {
 const getAllWhereCondition = (query) => {
     const whereCondition = {};
 
-    if (!_.isUndefined(query.id)) {
+    if (query.id) {
         whereCondition.id = query.id;
     }
-    if (!_.isUndefined(query.block)) {
-        whereCondition.block = query.block;
+    if (query.block) {
+        whereCondition.block = {
+            [Op.like]: `%${query.block}%`,
+        };
     }
-    if (!_.isUndefined(query.permitNo)) {
-        whereCondition.permitNo = query.permitNo;
+    if (query.permitNo) {
+        whereCondition.permitNo = {
+            [Op.like]: `%${query.permitNo}%`,
+        };
     }
-    if (!_.isUndefined(query.applicationNo)) {
-        whereCondition.applicationNo = query.applicationNo;
+    if (query.applicationNo) {
+        whereCondition.applicationNo = {
+            [Op.like]: `%${query.applicationNo}%`,
+        };
     }
 
     return whereCondition;
