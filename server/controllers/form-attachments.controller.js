@@ -43,7 +43,7 @@ function create(req, res, next) {
         return next(e);
     }
 
-    validateAllowedFormExist(formType, formId, (err) => {
+    validateAllowedFormExist(formType, formId, (err, form) => {
         if (err) {
             const e = new Error(err);
             e.status = httpStatus.BAD_REQUEST;
@@ -79,7 +79,8 @@ function create(req, res, next) {
                     .then((createdRecords) => {
                         const createdRecordIds = createdRecords.map((record) => record.id);
 
-                        const updates = { attachments: createdRecordIds };
+                        const existingAttachments = _.isEmpty(form.attachments) ? [] : form.attachments;
+                        const updates = { attachments: [...createdRecordIds, ...existingAttachments] };
 
                         const updateOption = {
                             where: {
