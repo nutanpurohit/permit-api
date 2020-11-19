@@ -270,8 +270,111 @@ function getAll(req, res, next) {
     });
 }
 
+function globalSearch(req, res, next) {
+    const { searchText } = req.body;
+
+    if (_.isEmpty(searchText)) {
+        const e = new Error('The search text cannot be empty');
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+    const queryValidationErr = validateGetAllQuery(req.query);
+
+    if (queryValidationErr) {
+        const e = new Error(queryValidationErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+
+    const {
+        limit = 10,
+        start = 0,
+        sortColumn = 'id',
+        sortBy = 'DESC',
+    } = req.query;
+    const offset = start * limit;
+
+    const projection = customerPermitFormProjection();
+
+    const whereCondition = getGlobalSearchWhereCondition(searchText);
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                buildingPermits: (done) => {
+                    BuildingPermits.findAll({
+                        where: whereCondition,
+                        attributes: projection,
+                        offset,
+                        limit,
+                        order: [
+                            [sortColumn, sortBy.toUpperCase()],
+                        ],
+                    })
+                        .then((buildingPermits) => {
+                            return done(null, buildingPermits);
+                        })
+                        .catch(done);
+                },
+                total: (done) => {
+                    BuildingPermits.count({
+                        where: whereCondition,
+                    })
+                        .then((count) => {
+                            return done(null, count);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                const processingData = {
+                    buildingPermits: parallelRes.buildingPermits,
+                    total: parallelRes.total,
+                };
+
+                return cb(null, processingData);
+            });
+        },
+        (processingData, cb) => {
+            processingData.completeCustomerPermitForm = [];
+
+            async.eachSeries(processingData.buildingPermits, (buildingPermit, eachCb) => {
+                getCompleteCustomerPermitForm(buildingPermit.id, (err, response) => {
+                    if (err) {
+                        return eachCb(err);
+                    }
+
+                    processingData.completeCustomerPermitForm.push(response.permitForm);
+                    return eachCb();
+                });
+            }, (eachErr) => {
+                if (eachErr) {
+                    return cb(eachErr);
+                }
+                return cb(null, processingData);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+
+        const response = {
+            buildingPermits: processingData.completeCustomerPermitForm,
+            total: processingData.total,
+        };
+        return res.json(response);
+    });
+}
+
 export default {
-    get, create, updatePermitByStaff, updatePermit, getAll,
+    get,
+    create,
+    updatePermitByStaff,
+    updatePermit,
+    getAll,
+    globalSearch,
 };
 
 const validateCreatePayload = (payload, callback) => {
@@ -1351,6 +1454,32 @@ const getAllWhereCondition = (query) => {
             [Op.like]: `%${query.applicationNo}%`,
         };
     }
+
+    return whereCondition;
+};
+
+const getGlobalSearchWhereCondition = (searchText) => {
+    const whereCondition = {
+        [Op.or]: [
+            {
+                id: isNaN(searchText) ? null : searchText,
+            },
+            {
+                permitNo: { [Op.like]: `%${searchText}%` },
+            },
+            { applicationNo: { [Op.like]: `%${searchText}%` } },
+            {
+                block: {
+                    [Op.like]: `%${searchText}%`,
+                },
+            },
+            {
+                groupOccupancy: {
+                    [Op.like]: `%${searchText}%`,
+                },
+            },
+        ],
+    };
 
     return whereCondition;
 };

@@ -23,4 +23,9 @@ router.route('/staff/:id')
     /** PUT /api/{version}/building-permit/staff/:id - Update building permit info by the staff users */
     .put(buildingPermitCtrl.updatePermitByStaff);
 
+router.route('/global-search')
+
+    /** POST /api/{version}/building-permit/global-search - Global search on the building permit columns */
+    .post(buildingPermitCtrl.globalSearch);
+
 export default router;
