@@ -198,11 +198,13 @@ function getAll(req, res, next) {
 
     const projection = customerPermitFormProjection();
 
+    const whereCondition = getAllWhereCondition(req.query);
     async.waterfall([
         (cb) => {
             async.parallel({
                 buildingPermits: (done) => {
                     BuildingPermits.findAll({
+                        where: whereCondition,
                         attributes: projection,
                         offset,
                         limit,
@@ -216,7 +218,9 @@ function getAll(req, res, next) {
                         .catch(done);
                 },
                 total: (done) => {
-                    BuildingPermits.count()
+                    BuildingPermits.count({
+                        where: whereCondition,
+                    })
                         .then((count) => {
                             return done(null, count);
                         })
@@ -1242,6 +1246,7 @@ const validateGetAllQuery = (query) => {
         'createdAt',
         'updatedAt',
     ];
+
     const allowedSortBy = ['asc', 'desc'];
 
     if (!_.isUndefined(limit) && isNaN(limit)) {
@@ -1323,4 +1328,23 @@ const customerPermitFormProjection = () => {
     ];
 
     return projection;
+};
+
+const getAllWhereCondition = (query) => {
+    const whereCondition = {};
+
+    if (!_.isUndefined(query.id)) {
+        whereCondition.id = query.id;
+    }
+    if (!_.isUndefined(query.block)) {
+        whereCondition.block = query.block;
+    }
+    if (!_.isUndefined(query.permitNo)) {
+        whereCondition.permitNo = query.permitNo;
+    }
+    if (!_.isUndefined(query.applicationNo)) {
+        whereCondition.applicationNo = query.applicationNo;
+    }
+
+    return whereCondition;
 };
