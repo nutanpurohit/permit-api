@@ -26,7 +26,7 @@ function getAll(req, res, next) {
         sortBy = 'DESC',
     } = req.query;
 
-    const offset = start * limit;
+    const offset = start;
 
     FormComment.findAll({
         where: { formId, applicationFormType: formType },

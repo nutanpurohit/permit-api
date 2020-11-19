@@ -195,7 +195,7 @@ function getAll(req, res, next) {
         sortColumn = 'id',
         sortBy = 'DESC',
     } = req.query;
-    const offset = start * limit;
+    const offset = start;
 
     const projection = customerPermitFormProjection();
 
@@ -293,7 +293,7 @@ function globalSearch(req, res, next) {
         sortColumn = 'id',
         sortBy = 'DESC',
     } = req.query;
-    const offset = start * limit;
+    const offset = start;
 
     const projection = customerPermitFormProjection();
 
