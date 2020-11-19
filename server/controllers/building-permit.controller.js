@@ -27,6 +27,7 @@ const {
     CostType,
     CostBuildingPermit,
     FormConfig,
+    FormComment,
 } = db;
 
 /**
@@ -887,6 +888,33 @@ const getCompletePermitForm = (permitId, callback) => {
                     return cb(e);
                 });
         },
+        // find the application comments
+        (processingData, cb) => {
+            const { id } = processingData.permitForm;
+
+            FormComment.findAll({
+                where: { formId: id, applicationFormType: 'buildingPermit' },
+            })
+                .then((formComments) => {
+                    processingData.permitForm.commentsSummary = {
+                        allComments: 0,
+                        unread: 0,
+                    };
+                    if (!_.isEmpty(formComments)) {
+                        processingData.permitForm.commentsSummary = {
+                            allComments: formComments.length,
+                            unread: formComments.filter((comment) => !comment.isPublish).length,
+                        };
+                    }
+
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
     ], (waterfallErr, processingData) => {
         if (waterfallErr) {
             return callback(waterfallErr);
@@ -988,6 +1016,33 @@ const getCompleteCustomerPermitForm = (permitId, callback) => {
                     }
 
                     processingData.permitForm.applicationStatus = applicationStatusType.name;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the application comments
+        (processingData, cb) => {
+            const { id } = processingData.permitForm;
+
+            FormComment.findAll({
+                where: { formId: id, applicationFormType: 'buildingPermit' },
+            })
+                .then((formComments) => {
+                    processingData.permitForm.commentsSummary = {
+                        allComments: 0,
+                        unread: 0,
+                    };
+                    if (!_.isEmpty(formComments)) {
+                        processingData.permitForm.commentsSummary = {
+                            allComments: formComments.length,
+                            unread: formComments.filter((comment) => !comment.isPublish).length,
+                        };
+                    }
+
                     return cb(null, processingData);
                 })
                 .catch(() => {
