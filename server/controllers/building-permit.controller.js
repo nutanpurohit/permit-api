@@ -27,6 +27,7 @@ const {
     CostBuildingPermit,
     FormConfig,
     FormComment,
+    FormAttachment,
 } = db;
 
 /**
@@ -902,6 +903,26 @@ const getCompletePermitForm = (permitId, callback) => {
                     return cb(e);
                 });
         },
+        // find the application attachments
+        (processingData, cb) => {
+            const { attachments } = processingData.permitForm;
+
+            if (_.isEmpty(attachments)) {
+                return cb(null, processingData);
+            }
+            FormAttachment.findAll({
+                where: { id: attachments, applicationFormType: 'buildingPermit' },
+            })
+                .then((attachmentRecords) => {
+                    processingData.permitForm.attachments = attachmentRecords;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding form attachments');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
     ], (waterfallErr, processingData) => {
         if (waterfallErr) {
             return callback(waterfallErr);
@@ -1034,6 +1055,26 @@ const getCompleteCustomerPermitForm = (permitId, callback) => {
                 })
                 .catch(() => {
                     const e = new Error('Something went wrong while finding application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the application attachments
+        (processingData, cb) => {
+            const { attachments } = processingData.permitForm;
+
+            if (_.isEmpty(attachments)) {
+                return cb(null, processingData);
+            }
+            FormAttachment.findAll({
+                where: { id: attachments, applicationFormType: 'buildingPermit' },
+            })
+                .then((attachmentRecords) => {
+                    processingData.permitForm.attachments = attachmentRecords;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding form attachments');
                     e.status = httpStatus.INTERNAL_SERVER_ERROR;
                     return cb(e);
                 });
@@ -1250,7 +1291,6 @@ const validateUpdatePayload = (permitFormId, payload, callback) => {
         },
         (cb) => {
             if (!_.isEmpty(payload.costs)) {
-
                 return async.eachLimit(payload.costs, 5, (costObj, eachCb) => {
                     payload.costIds = [];
 

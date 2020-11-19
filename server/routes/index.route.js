@@ -4,6 +4,7 @@ import buildingPermitOptions from './building-permit-options.route';
 import buildingLicenseApplicationOptions from './business-license-application-option.route';
 import buildingLicenseApplication from './business-license-application.route';
 import formComments from './form-comments.route';
+import formAttachments from './form-attachments.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -22,7 +23,10 @@ router.use('/business-license-application', buildingLicenseApplication);
 // mount building license application option routes
 router.use('/business-license-application-options', buildingLicenseApplicationOptions);
 
-// mount building permit comment routes
+// mount form comments routes
 router.use('/form-comments', formComments);
+
+// mount form attachments routes
+router.use('/form-attachments', formAttachments);
 
 export default router;

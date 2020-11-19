@@ -37,6 +37,7 @@
         "lodash": "^4.17.15",
         "method-override": "^3.0.0",
         "moment": "false2.29.1",
+        "multer": "false1.4.2",
         "pg": "7.12.1",
         "pg-hstore": "2.3.3",
         "sequelize": "5.15.1",

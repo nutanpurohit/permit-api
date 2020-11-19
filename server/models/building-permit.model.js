@@ -91,6 +91,8 @@ module.exports = (sequelize, DataTypes) => {
         sequentialNo: { type: DataTypes.INTEGER },
         fiscalYear: { type: DataTypes.STRING },
 
+        attachments: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+
     });
 
     return BuildingPermit;
