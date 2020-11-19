@@ -4,11 +4,16 @@ import multer from 'multer';
 import * as _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
+import * as fs from 'fs';
 import db from '../../config/sequelize';
 
 const storage = multer.diskStorage({
     destination(req, file, cb) {
-        cb(null, './server/public/attachments/');
+        const dest = './server/public/attachments/';
+        if (!fs.existsSync(dest)) {
+            fs.mkdirSync(dest);
+        }
+        cb(null, dest);
     },
     filename(req, file, cb) {
         cb(null, uuidv4() + path.extname(file.originalname));
@@ -65,7 +70,7 @@ function create(req, res, next) {
                         documentName: docName[index],
                         documentSequence: docNo[index],
                         documentType: docType[index],
-                        url: file.path,
+                        url: `attachments/${file.filename}`,
                         applicationFormType: formType,
                     };
                 });

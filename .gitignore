@@ -51,3 +51,6 @@ node_modules
 .gradle
 build/nodejs
 build/yarn
+
+# attachments
+server/public/attachments
