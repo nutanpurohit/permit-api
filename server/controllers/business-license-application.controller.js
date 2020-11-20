@@ -606,17 +606,20 @@ const getGlobalSearchWhereCondition = (searchText) => {
     const whereCondition = {
         [Op.or]: [
             {
-                cellPhoneNo: { [Op.like]: `%${searchText}%` },
-            },
-            { officeNo: { [Op.like]: `%${searchText}%` } },
-            { email: { [Op.like]: `%${searchText}%` } },
-            {
                 GRTAccountNo: {
                     [Op.like]: `%${searchText}%`,
                 },
             },
             {
-                BLBComments: {
+                id: isNaN(searchText) ? null : searchText,
+            },
+            {
+                applicantFullName: {
+                    [Op.like]: `%${searchText}%`,
+                },
+            },
+            {
+                issuedLicenseNo: {
                     [Op.like]: `%${searchText}%`,
                 },
             },
