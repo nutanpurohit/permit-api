@@ -1,5 +1,6 @@
 import express from 'express';
 import businessLicenseApplicationCtrl from '../controllers/business-license-application.controller';
+import buildingPermitCtrl from '../controllers/building-permit.controller'
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -18,5 +19,10 @@ router.route('/:id')
 
     /** PUT /api/{version}/business-license-application/:id - operations for updating specific business-license-application */
     .put(businessLicenseApplicationCtrl.updateApplicationForm);
+
+router.route('/global-search')
+
+    /** POST /api/{version}/business-license-application/global-search - Global search on the business license columns */
+    .post(businessLicenseApplicationCtrl.globalSearch);
 
 export default router;

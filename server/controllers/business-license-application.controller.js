@@ -1,14 +1,17 @@
 import httpStatus from 'http-status';
 import * as _ from 'lodash';
 import async from 'async';
+import Sequelize from 'sequelize';
 import db from '../../config/sequelize';
 
+const { Op } = Sequelize;
 const {
     BusinessLicenseApplication,
     OrganizationType,
     ClearanceType,
     ApplicationStatusType,
     FormAttachment,
+    FormComment,
 } = db;
 
 /**
@@ -190,8 +193,106 @@ function updateApplicationForm(req, res, next) {
     });
 }
 
+function globalSearch(req, res, next) {
+    const { searchText } = req.body;
+
+    if (_.isEmpty(searchText)) {
+        const e = new Error('The search text cannot be empty');
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+    const queryValidationErr = validateGetAllQuery(req.query);
+
+    if (queryValidationErr) {
+        const e = new Error(queryValidationErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+
+    const {
+        limit = 10,
+        start = 0,
+        sortColumn = 'id',
+        sortBy = 'DESC',
+    } = req.query;
+    const offset = start;
+
+    const projection = businessLicenseProjection();
+
+    const whereCondition = getGlobalSearchWhereCondition(searchText);
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                businessLicenseApplications: (done) => {
+                    BusinessLicenseApplication.findAll({
+                        where: whereCondition,
+                        attributes: projection,
+                        offset,
+                        limit,
+                        order: [
+                            [sortColumn, sortBy.toUpperCase()],
+                        ],
+                    })
+                        .then((applications) => {
+                            return done(null, applications);
+                        })
+                        .catch(done);
+                },
+                total: (done) => {
+                    BusinessLicenseApplication.count({
+                        where: whereCondition,
+                    })
+                        .then((count) => {
+                            return done(null, count);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                const processingData = {
+                    businessLicenseApplications: parallelRes.businessLicenseApplications,
+                    total: parallelRes.total,
+                };
+
+                return cb(null, processingData);
+            });
+        },
+        (processingData, cb) => {
+            processingData.completeApplicationForm = [];
+
+            async.eachSeries(processingData.businessLicenseApplications, (businessLicenseApplication, eachCb) => {
+                getCompleteLicenseApplicationForm(businessLicenseApplication.id, (err, response) => {
+                    if (err) {
+                        return eachCb(err);
+                    }
+
+                    processingData.completeApplicationForm.push(response.applicationForm);
+                    return eachCb();
+                });
+            }, (eachErr) => {
+                if (eachErr) {
+                    return cb(eachErr);
+                }
+                return cb(null, processingData);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+
+        const response = {
+            businessLicenseApplications: processingData.completeApplicationForm,
+            total: processingData.total,
+        };
+        return res.json(response);
+    });
+}
+
 export default {
-    get, create, getAll, updateApplicationForm,
+    get, create, getAll, updateApplicationForm, globalSearch,
 };
 
 const validateCreatePayload = (payload, callback) => {
@@ -326,6 +427,7 @@ const getCompleteLicenseApplicationForm = (applicationId, callback) => {
                     }
 
                     processingData.applicationForm = applicationForm;
+                    processingData.applicationForm.formType = 'Business License';
                     return cb(null, processingData);
                 })
                 .catch(() => {
@@ -373,6 +475,33 @@ const getCompleteLicenseApplicationForm = (applicationId, callback) => {
                 })
                 .catch(() => {
                     const e = new Error('Something went wrong while finding application attachments');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the application comments
+        (processingData, cb) => {
+            const { id } = processingData.applicationForm;
+
+            FormComment.findAll({
+                where: { formId: id, applicationFormType: 'businessLicense' },
+            })
+                .then((formComments) => {
+                    processingData.applicationForm.commentsSummary = {
+                        allComments: 0,
+                        unread: 0,
+                    };
+                    if (!_.isEmpty(formComments)) {
+                        processingData.applicationForm.commentsSummary = {
+                            allComments: formComments.length,
+                            unread: formComments.filter((comment) => !comment.isPublish).length,
+                        };
+                    }
+
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding form comments');
                     e.status = httpStatus.INTERNAL_SERVER_ERROR;
                     return cb(e);
                 });
@@ -471,4 +600,28 @@ const businessLicenseProjection = () => {
     ];
 
     return projection;
+};
+
+const getGlobalSearchWhereCondition = (searchText) => {
+    const whereCondition = {
+        [Op.or]: [
+            {
+                cellPhoneNo: { [Op.like]: `%${searchText}%` },
+            },
+            { officeNo: { [Op.like]: `%${searchText}%` } },
+            { email: { [Op.like]: `%${searchText}%` } },
+            {
+                GRTAccountNo: {
+                    [Op.like]: `%${searchText}%`,
+                },
+            },
+            {
+                BLBComments: {
+                    [Op.like]: `%${searchText}%`,
+                },
+            },
+        ],
+    };
+
+    return whereCondition;
 };

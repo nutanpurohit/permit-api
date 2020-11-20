@@ -124,7 +124,7 @@ const validateGetAllQuery = (query) => {
 };
 
 const validateAllowedFormType = (formType) => {
-    const allowedFormTypes = ['buildingPermit'];
+    const allowedFormTypes = ['buildingPermit', 'businessLicense'];
 
     if (!allowedFormTypes.includes(formType)) {
         return `The comment is not supported for form type ${formType}`;

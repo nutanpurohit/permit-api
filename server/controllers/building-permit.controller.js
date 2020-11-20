@@ -746,6 +746,7 @@ const getCompletePermitForm = (permitId, callback) => {
                     }
 
                     processingData.permitForm = permitForm;
+                    processingData.permitForm.formType = 'Building Permit';
                     return cb(null, processingData);
                 })
                 .catch(() => {
@@ -896,7 +897,7 @@ const getCompletePermitForm = (permitId, callback) => {
                     return cb(null, processingData);
                 })
                 .catch(() => {
-                    const e = new Error('Something went wrong while finding application status');
+                    const e = new Error('Something went wrong while finding form comments');
                     e.status = httpStatus.INTERNAL_SERVER_ERROR;
                     return cb(e);
                 });
@@ -950,6 +951,7 @@ const getCompleteCustomerPermitForm = (permitId, callback) => {
                     }
 
                     processingData.permitForm = permitForm;
+                    processingData.permitForm.formType = 'Building Permit';
                     return cb(null, processingData);
                 })
                 .catch(() => {
