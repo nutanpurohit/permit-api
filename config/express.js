@@ -12,6 +12,7 @@ import config from './config';
 import logger from './winston/get-default-logger';
 import routes from '../server/routes/index.route';
 import APIError from '../server/helpers/APIError';
+import JWTSecurity from '../server/helpers/JWTSecurityHelper';
 
 // Define default HTTP logger instance (use default logger instance)
 const winstonInstance = logger;
@@ -35,6 +36,9 @@ app.use(helmet());
 
 // enable CORS - Cross Origin Resource Sharing
 app.use(cors());
+
+// add authentication middleware
+app.use(JWTSecurity.jwtVerify);
 
 // This is really just a test output and should be the first thing you see
 winstonInstance.info('The application is starting...');
