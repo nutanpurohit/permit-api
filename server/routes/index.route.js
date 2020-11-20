@@ -7,6 +7,7 @@ import formComments from './form-comments.route';
 import formAttachments from './form-attachments.route';
 import naicsCodesRoute from './naics-code.route';
 import departmentTypeRoute from './departmentType.route';
+import naicsDepartmentRelationshipRoute from './naics-deparment-relationship.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -36,5 +37,8 @@ router.use('/naics-code', naicsCodesRoute);
 
 // mount department type routes
 router.use('/departmentType', departmentTypeRoute);
+
+// mount NAICS and department routes
+router.use('/naics-deparment', naicsDepartmentRelationshipRoute);
 
 export default router;

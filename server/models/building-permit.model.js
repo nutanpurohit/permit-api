@@ -69,6 +69,7 @@ module.exports = (sequelize, DataTypes) => {
         district: { type: DataTypes.STRING(300) },
         use: { type: DataTypes.STRING(300) },
         frontYard: { type: DataTypes.STRING(300) },
+        propertyOwnership: { type: DataTypes.STRING(300) },
         sideYard: { type: DataTypes.STRING(300) },
         rearYard: { type: DataTypes.STRING(300) },
         leaseOrAuthorization: { type: DataTypes.STRING(300) },
