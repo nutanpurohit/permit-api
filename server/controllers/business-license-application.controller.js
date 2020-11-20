@@ -8,6 +8,7 @@ const {
     OrganizationType,
     ClearanceType,
     ApplicationStatusType,
+    FormAttachment,
 } = db;
 
 /**
@@ -20,7 +21,6 @@ const {
 function create(req, res, next) {
     const payload = req.body;
 
-    // eslint-disable-next-line no-use-before-define
     validateCreatePayload(payload, (validationErr) => {
         if (validationErr) {
             const e = new Error(validationErr);
@@ -153,8 +153,45 @@ function getAll(req, res, next) {
     });
 }
 
+function updateApplicationForm(req, res, next) {
+    const payload = req.body;
+    const applicationFormId = req.params.id;
+
+    validateUpdatePayload(applicationFormId, payload, (validationErr) => {
+        if (validationErr) {
+            const e = new Error(validationErr);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+
+        const updates = { ...payload };
+
+        const updateOption = {
+            where: {
+                id: applicationFormId,
+            },
+        };
+
+        BusinessLicenseApplication.update(updates, updateOption)
+            .then(() => {
+                getCompleteLicenseApplicationForm(applicationFormId, (err, response) => {
+                    if (err) {
+                        return next(err);
+                    }
+
+                    return res.json(response.applicationForm);
+                });
+            })
+            .catch(() => {
+                const e = new Error('An error occurred while updating the business license application form');
+                e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                return next(e);
+            });
+    });
+}
+
 export default {
-    get, create, getAll,
+    get, create, getAll, updateApplicationForm,
 };
 
 const validateCreatePayload = (payload, callback) => {
@@ -213,6 +250,65 @@ const validateCreatePayload = (payload, callback) => {
     });
 };
 
+const validateUpdatePayload = (formId, payload, callback) => {
+    async.waterfall([
+        (cb) => {
+            if (_.isEmpty(payload.clearanceTypeIds)) {
+                return cb();
+            }
+
+            ClearanceType.findAll({ where: { id: payload.clearanceTypeIds } })
+                .then((types) => {
+                    if (_.isEmpty(types)) {
+                        return cb('The clearance type value is incorrect');
+                    }
+                    cb();
+                })
+                .catch(() => {
+                    return cb('something went wrong while checking clearance types');
+                });
+        },
+        (cb) => {
+            if (!payload.organizationTypeId) {
+                return cb();
+            }
+
+            OrganizationType.findOne({ where: { id: payload.organizationTypeId } })
+                .then((types) => {
+                    if (_.isEmpty(types)) {
+                        return cb('The organization type value is incorrect');
+                    }
+                    cb();
+                })
+                .catch(() => {
+                    return cb('something went wrong while checking organization types');
+                });
+        },
+        (cb) => {
+            if (!payload.applicationStatusId) {
+                return cb();
+            }
+
+            ApplicationStatusType.findByPk(payload.applicationStatusId)
+                .then((types) => {
+                    if (_.isEmpty(types)) {
+                        return cb('The application status type value is incorrect');
+                    }
+                    cb();
+                })
+                .catch(() => {
+                    return cb('something went wrong while checking application status type');
+                });
+        },
+    ], (waterfallErr) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+
+        return callback();
+    });
+};
+
 const getCompleteLicenseApplicationForm = (applicationId, callback) => {
     async.waterfall([
         // find form details
@@ -258,6 +354,25 @@ const getCompleteLicenseApplicationForm = (applicationId, callback) => {
                 })
                 .catch(() => {
                     const e = new Error('Something went wrong while finding application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the application attachments
+        (processingData, cb) => {
+            const { attachments } = processingData.applicationForm;
+            if (_.isEmpty(attachments)) {
+                return cb(null, processingData);
+            }
+            FormAttachment.findAll({
+                where: { id: attachments, applicationFormType: 'businessLicense' },
+            })
+                .then((attachmentRecords) => {
+                    processingData.applicationForm.attachments = attachmentRecords;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding application attachments');
                     e.status = httpStatus.INTERNAL_SERVER_ERROR;
                     return cb(e);
                 });

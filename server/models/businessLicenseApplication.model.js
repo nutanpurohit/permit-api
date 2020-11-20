@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             primaryKey: true,
         },
+        UBLNo: { type: DataTypes.STRING(300) },
         clearanceTypeIds: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
         ssn: { type: DataTypes.STRING(300) },
         ein: { type: DataTypes.STRING(300) },

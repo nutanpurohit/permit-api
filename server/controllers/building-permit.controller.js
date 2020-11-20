@@ -41,7 +41,6 @@ function create(req, res, next) {
     let payload = req.body;
     payload = removeRestrictedFields(payload);
 
-    // eslint-disable-next-line no-use-before-define
     validateCreatePayload(payload, (validationErr) => {
         if (validationErr) {
             const e = new Error(validationErr);
@@ -126,7 +125,6 @@ function updatePermit(req, res, next) {
     const payload = req.body;
     const permitFormId = req.params.id;
 
-    // eslint-disable-next-line no-use-before-define
     validateUpdatePayload(permitFormId, payload, (validationErr) => {
         if (validationErr) {
             const e = new Error(validationErr);
@@ -1340,8 +1338,6 @@ const removeRestrictedFields = (payload) => {
     delete payload.buildingPermitNo;
     delete payload.permitNo;
     delete payload.applicationNo;
-    delete payload.sequentialNo;
-    delete payload.fiscalYear;
 
     return payload;
 };

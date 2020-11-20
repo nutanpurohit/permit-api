@@ -14,6 +14,9 @@ router.route('/')
 router.route('/:id')
 
     /** GET /api/{version}/business-license-application/:id - operations for retrieving specific business-license-application */
-    .get(businessLicenseApplicationCtrl.get);
+    .get(businessLicenseApplicationCtrl.get)
+
+    /** PUT /api/{version}/business-license-application/:id - operations for updating specific business-license-application */
+    .put(businessLicenseApplicationCtrl.updateApplicationForm);
 
 export default router;

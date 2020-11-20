@@ -88,9 +88,6 @@ module.exports = (sequelize, DataTypes) => {
 
         applicationStatusId: { type: DataTypes.BIGINT.UNSIGNED },
 
-        sequentialNo: { type: DataTypes.INTEGER },
-        fiscalYear: { type: DataTypes.STRING },
-
         attachments: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
 
     });
