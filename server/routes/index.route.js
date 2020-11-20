@@ -5,6 +5,8 @@ import buildingLicenseApplicationOptions from './business-license-application-op
 import buildingLicenseApplication from './business-license-application.route';
 import formComments from './form-comments.route';
 import formAttachments from './form-attachments.route';
+import naicsCodesRoute from './naics-code.route';
+import departmentTypeRoute from './departmentType.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -28,5 +30,11 @@ router.use('/form-comments', formComments);
 
 // mount form attachments routes
 router.use('/form-attachments', formAttachments);
+
+// mount NAICS code routes
+router.use('/naics-code', naicsCodesRoute);
+
+// mount department type routes
+router.use('/departmentType', departmentTypeRoute);
 
 export default router;
