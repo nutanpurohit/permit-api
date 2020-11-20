@@ -1472,6 +1472,7 @@ const customerPermitFormProjection = () => {
         'ownership',
         'costIds',
         'otherCost',
+        'applicationStatusId',
         'improvementCostTotal',
         'nonResidentialPurpose',
         'residential',
