@@ -12,6 +12,10 @@ const {
     ApplicationStatusType,
     FormAttachment,
     FormComment,
+    NAICSType,
+    FormNAICSRelationship,
+    NAICSDepartmentRelationship,
+    DepartmentType,
 } = db;
 
 /**
@@ -31,22 +35,69 @@ function create(req, res, next) {
             return next(e);
         }
 
-        BusinessLicenseApplication.create(payload)
-            .then((createdRecord) => {
-                // eslint-disable-next-line no-use-before-define
-                getCompleteLicenseApplicationForm(createdRecord.id, (err, response) => {
-                    if (err) {
-                        return next(err);
+        async.waterfall([
+            (cb) => {
+                BusinessLicenseApplication.create(payload)
+                    .then((createdRecord) => {
+                        getCompleteLicenseApplicationForm(createdRecord.id, (err, response) => {
+                            if (err) {
+                                return cb(err);
+                            }
+
+                            const processingData = {
+                                applicationForm: response.applicationForm,
+                            };
+                            return cb(null, processingData);
+                        });
+                    })
+                    .catch(() => {
+                        const e = new Error('An error occurred while posting the business license application form');
+                        e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                        return cb(e);
+                    });
+            },
+            (processingData, cb) => {
+                const { naicsIds } = payload;
+                if (_.isEmpty(naicsIds)) {
+                    return cb(null, processingData);
+                }
+
+                const bulkCreatePayload = naicsIds.map((naicsId) => {
+                    return {
+                        naicsId,
+                        applicationFormId: processingData.applicationForm.id,
+                        applicationFormType: 'businessLicense',
+                    };
+                });
+
+                FormNAICSRelationship.bulkCreate(bulkCreatePayload)
+                    .then((createdRecords) => {
+                        processingData.createdFormNiacsIds = createdRecords.map((createdRecord) => createdRecord.id);
+                        cb(null, processingData);
+                    })
+                    .catch(cb);
+            },
+            (processingData, cb) => {
+                if (_.isEmpty(processingData.createdFormNiacsIds)) {
+                    return cb(null, processingData);
+                }
+
+                getFormNAICSDepartment(processingData.createdFormNiacsIds, (getErr, getResponse) => {
+                    if (getErr) {
+                        return cb(getErr);
                     }
 
-                    return res.json(response.applicationForm);
+                    processingData.applicationForm.attachedNAICS = getResponse;
+                    cb(null, processingData);
                 });
-            })
-            .catch(() => {
-                const e = new Error('An error occurred while posting the business license application form');
-                e.status = httpStatus.INTERNAL_SERVER_ERROR;
-                return next(e);
-            });
+            },
+        ], (err, processingData) => {
+            if (err) {
+                return next(err);
+            }
+
+            return res.json(processingData.applicationForm);
+        });
     });
 }
 
@@ -342,6 +393,21 @@ const validateCreatePayload = (payload, callback) => {
             }
             cb();
         },
+        (cb) => {
+            if (!_.isEmpty(payload.naicsIds)) {
+                return NAICSType.findAll({ where: { id: payload.naicsIds } })
+                    .then((types) => {
+                        if (_.isEmpty(types)) {
+                            return cb('The NAICS type value is incorrect');
+                        }
+                        cb();
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking NAICS types');
+                    });
+            }
+            cb();
+        },
     ], (waterfallErr) => {
         if (waterfallErr) {
             return callback(waterfallErr);
@@ -506,6 +572,36 @@ const getCompleteLicenseApplicationForm = (applicationId, callback) => {
                     return cb(e);
                 });
         },
+        // find the application attached NAICS
+        (processingData, cb) => {
+            const { id } = processingData.applicationForm;
+
+            FormNAICSRelationship.findAll({
+                where: { applicationFormId: id, applicationFormType: 'businessLicense' },
+            })
+                .then((formNAICSRelationships) => {
+                    processingData.applicationForm.attachedNAICS = [];
+
+                    const formNiacsIds = formNAICSRelationships.map((formNAICSRelationshipObj) => formNAICSRelationshipObj.id);
+                    if (!_.isEmpty(formNiacsIds)) {
+                        return getFormNAICSDepartment(formNiacsIds, (getErr, getResponse) => {
+                            if (getErr) {
+                                return cb(getErr);
+                            }
+
+                            processingData.applicationForm.attachedNAICS = getResponse;
+                            cb(null, processingData);
+                        });
+                    }
+
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding form comments');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
     ], (waterfallErr, processingData) => {
         if (waterfallErr) {
             return callback(waterfallErr);
@@ -627,4 +723,52 @@ const getGlobalSearchWhereCondition = (searchText) => {
     };
 
     return whereCondition;
+};
+
+const getFormNAICSDepartment = (formNaicsIds, callback) => {
+    FormNAICSRelationship.findAll({
+        where: { id: formNaicsIds },
+        include: [
+            {
+                model: NAICSType,
+                required: true,
+                include: [
+                    {
+                        model: NAICSDepartmentRelationship,
+                        include: [{ model: DepartmentType, required: true }],
+                    },
+                ],
+            },
+        ],
+    })
+        .then((formNAICSRecords) => {
+            if (_.isEmpty(formNAICSRecords)) {
+                return callback(null, []);
+            }
+
+            const finalResponse = formNAICSRecords.map((formNAICSRecord) => {
+                return {
+                    id: formNAICSRecord.id,
+                    naicsId: formNAICSRecord.naicsId,
+                    applicationFormId: formNAICSRecord.applicationFormId,
+                    sequenceNo: formNAICSRecord.NAICSType.sequenceNo,
+                    shortCode: formNAICSRecord.NAICSType.shortCode,
+                    NAICSGroup: formNAICSRecord.NAICSType.NAICSGroup,
+                    code: formNAICSRecord.NAICSType.code,
+                    title: formNAICSRecord.NAICSType.title,
+                    year: formNAICSRecord.NAICSType.year,
+                    status: formNAICSRecord.NAICSType.status,
+                    departments: _.isEmpty(formNAICSRecord.NAICSType.NAICSDepartmentRelationships) ? []
+                        : formNAICSRecord.NAICSType.NAICSDepartmentRelationships.map((relationshipObj) => {
+                            return {
+                                id: relationshipObj.DepartmentType.id,
+                                name: relationshipObj.DepartmentType.name,
+                            };
+                        }),
+                };
+            });
+
+            callback(null, finalResponse);
+        })
+        .catch(callback);
 };

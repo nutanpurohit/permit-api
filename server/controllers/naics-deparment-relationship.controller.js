@@ -98,24 +98,32 @@ function create(req, res, next) {
 
         async.waterfall([
             (cb) => {
-                NAICSDepartmentRelationship.create(payload)
-                    .then((createdRecord) => {
-                        const processingData = { createdRecord };
+                const bulkCreatePayload = payload.departmentIds.map((departmentId) => {
+                    return {
+                        departmentId,
+                        naicsId: payload.naicsId,
+                    };
+                });
+                NAICSDepartmentRelationship.bulkCreate(bulkCreatePayload)
+                    .then((createdRecords) => {
+                        const processingData = {
+                            createdRecordsId: createdRecords.map((createdRecord) => createdRecord.id),
+                        };
                         cb(null, processingData);
                     })
                     .catch(cb);
             },
             (processingData, cb) => {
-                const { id } = processingData.createdRecord;
-                NAICSDepartmentRelationship.findOne({
-                    where: { id },
+                const { createdRecordsId } = processingData;
+                NAICSDepartmentRelationship.findAll({
+                    where: { id: createdRecordsId },
                     include: [
                         { model: NAICSType },
                         { model: DepartmentType },
                     ],
                 })
-                    .then((record) => {
-                        processingData.createdRecord = record;
+                    .then((records) => {
+                        processingData.createdRecords = records;
                         cb(null, processingData);
                     })
                     .catch(cb);
@@ -124,7 +132,7 @@ function create(req, res, next) {
             if (waterFallErr) {
                 return next(waterFallErr);
             }
-            return res.json(processingData.createdRecord);
+            return res.json(processingData.createdRecords);
         });
     });
 }
@@ -164,8 +172,8 @@ function updateRelationship(req, res, next) {
                     ],
                 })
                     .then((record) => {
-                        const processingData ={
-                            updatedRecord: record
+                        const processingData = {
+                            updatedRecord: record,
                         };
                         cb(null, processingData);
                     })
@@ -199,23 +207,23 @@ export default {
 const validateRelationshipPayload = (payload, callback) => {
     const {
         naicsId,
-        departmentId,
+        departmentIds,
     } = payload;
 
     if (!naicsId) {
         return callback('The naicsId is missing');
     }
 
-    if (!departmentId) {
-        return callback('The departmentId is missing');
+    if (_.isEmpty(departmentIds)) {
+        return callback('The departmentIds is missing');
     }
 
     async.waterfall([
         (cb) => {
-            NAICSDepartmentRelationship.findOne({ where: { naicsId, departmentId } })
+            NAICSDepartmentRelationship.findOne({ where: { naicsId, departmentId: departmentIds } })
                 .then((record) => {
                     if (!_.isEmpty(record)) {
-                        return cb('The relationship is already created for this NAICS id and department id');
+                        return cb('The relationship is already created for this NAICS id and department ids');
                     }
 
                     return cb();
@@ -236,10 +244,12 @@ const validateRelationshipPayload = (payload, callback) => {
                         .catch(done);
                 },
                 departmentType: (done) => {
-                    DepartmentType.findOne({ where: { id: departmentId } })
+                    DepartmentType.findAll({
+                        where: { id: departmentIds },
+                    })
                         .then((record) => {
-                            if (_.isEmpty(record)) {
-                                return done(`The department record with id ${departmentId} does not exist`);
+                            if (_.isEmpty(record) || record.length !== departmentIds.length) {
+                                return done(`Some department records with id ${departmentIds} are missing`);
                             }
 
                             return done(null, record);
