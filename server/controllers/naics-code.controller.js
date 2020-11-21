@@ -82,9 +82,62 @@ function getAll(req, res, next) {
     });
 }
 
+function create(req, res, next) {
+    const payload = req.body;
+
+    validateNaicsPayload(payload, (err) => {
+        if (err) {
+            const e = new Error(err);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+        payload.status = 'Active';
+
+        async.waterfall([
+            (cb) => {
+                NAICSType.findOne({ where: { code: payload.code } })
+                    .then((duplicateRecord) => {
+                        if (_.isEmpty(duplicateRecord)) {
+                            return cb();
+                        }
+
+                        const e = new Error(`The NAICS code already exist for ${payload.code}`);
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    })
+                    .catch(cb);
+            },
+            (cb) => {
+                NAICSType.create(payload)
+                    .then((createdRecord) => {
+                        cb(null, createdRecord);
+                    })
+                    .catch(cb);
+            },
+        ], (waterFallErr, createdRecord) => {
+            if (waterFallErr) {
+                return next(waterFallErr);
+            }
+            return res.json(createdRecord);
+        });
+    });
+}
+
+
+function deleteNaics(req, res, next) {
+    const { id } = req.params;
+
+    NAICSType.destroy({ where: { id } })
+        .then(() => {
+            return res.json({
+                status: 'NAICS record deleted successfully',
+            });
+        })
+        .catch(next);
+}
 
 export default {
-    getAll,
+    getAll, create, deleteNaics,
 };
 
 const validateGetAllQuery = (query) => {
@@ -174,4 +227,32 @@ const getAllWhereCondition = (query) => {
     }
 
     return whereCondition;
+};
+
+const validateNaicsPayload = (payload, callback) => {
+    const {
+        sequenceNo, shortCode,
+        NAICSGroup,
+        code,
+        title,
+        year,
+    } = payload;
+
+    if (
+        !sequenceNo || _.isEmpty(shortCode)
+        || _.isEmpty(NAICSGroup) || _.isEmpty(code)
+        || _.isEmpty(title) || !year
+    ) {
+        return callback('Either sequenceNo, shortCode, NAICSGroup, code, title or year is missing');
+    }
+
+    if (shortCode.length !== 2) {
+        return callback('short code should be only 2 characters');
+    }
+
+    if (code.length !== 4) {
+        return callback('code should be only 4 characters');
+    }
+
+    return callback();
 };
