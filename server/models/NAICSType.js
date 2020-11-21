@@ -33,5 +33,11 @@ module.exports = (sequelize, DataTypes) => {
             });
     };
 
+    NAICSType.registerModels = (db) => {
+        const { NAICSDepartmentRelationship } = db;
+
+        NAICSType.hasMany(NAICSDepartmentRelationship, { foreignKey: 'naicsId' });
+    };
+
     return NAICSType;
 };

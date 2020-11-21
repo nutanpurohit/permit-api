@@ -37,6 +37,7 @@ const sequelize = new Sequelize(
 
 const modelsDir = path.normalize(`${__dirname}/../server/models`);
 
+const modelRegister = [];
 // loop through all files in models directory ignoring hidden files and this file
 fs.readdirSync(modelsDir)
     .filter((file) => (file.indexOf('.') !== 0) && (file.indexOf('.map') === -1))
@@ -48,7 +49,18 @@ fs.readdirSync(modelsDir)
         if (model.addDefaultRecords) {
             setTimeout(() => { model.addDefaultRecords(); }, 10000);
         }
+        if (model.registerModels) {
+            modelRegister.push({
+                register: model.registerModels,
+            });
+        }
     });
+
+if (!_.isEmpty(modelRegister)) {
+    modelRegister.forEach((modelRegisterObj) => {
+        modelRegisterObj.register(db);
+    });
+}
 
 // Synchronizing any model changes with database.
 sequelize

@@ -7,11 +7,14 @@ import db from '../../config/sequelize';
 const { Op } = Sequelize;
 
 const {
+    NAICSDepartmentRelationship,
     NAICSType,
+    DepartmentType,
 } = db;
 
 function getAll(req, res, next) {
     const queryValidationErr = validateGetAllQuery(req.query);
+
     if (queryValidationErr) {
         const e = new Error(queryValidationErr);
         e.status = httpStatus.BAD_REQUEST;
@@ -19,37 +22,38 @@ function getAll(req, res, next) {
     }
 
     const {
-        limit = 10000,
+        limit = 25,
         start = 0,
-        sortColumn = 'NAICSGroup',
-        sortBy = 'ASC',
+        sortColumn = 'id',
+        sortBy = 'DESC',
     } = req.query;
-    const offset = start;
 
+    const offset = start;
     const whereCondition = getAllWhereCondition(req.query);
+
     async.waterfall([
         (cb) => {
             async.parallel({
-                NAICSTypeRecords: (done) => {
-                    NAICSType.findAll({
+                relationships: (done) => {
+                    NAICSDepartmentRelationship.findAll({
                         where: whereCondition,
                         offset,
                         limit,
+                        include: [
+                            { model: NAICSType },
+                            { model: DepartmentType },
+                        ],
                         order: [
                             [sortColumn, sortBy.toUpperCase()],
                         ],
-                        raw: true,
                     })
-                        .then((types) => {
-                            const grouped = _.groupBy(types, (type) => {
-                                return type.NAICSGroup;
-                            });
-                            return done(null, grouped);
+                        .then((records) => {
+                            done(null, records);
                         })
                         .catch(done);
                 },
                 total: (done) => {
-                    NAICSType.count({
+                    NAICSDepartmentRelationship.count({
                         where: whereCondition,
                     })
                         .then((count) => {
@@ -62,7 +66,7 @@ function getAll(req, res, next) {
                     return cb(parallelErr);
                 }
                 const processingData = {
-                    NAICSTypes: parallelRes.NAICSTypeRecords,
+                    relationships: parallelRes.relationships,
                     total: parallelRes.total,
                 };
 
@@ -75,20 +79,240 @@ function getAll(req, res, next) {
         }
 
         const response = {
-            NAICSTypes: processingData.NAICSTypes,
+            relationships: processingData.relationships,
             total: processingData.total,
         };
         return res.json(response);
     });
 }
 
-
 function create(req, res, next) {
+    const payload = req.body;
 
+    validateRelationshipPayload(payload, (err) => {
+        if (err) {
+            const e = new Error(err);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+
+        async.waterfall([
+            (cb) => {
+                NAICSDepartmentRelationship.create(payload)
+                    .then((createdRecord) => {
+                        const processingData = { createdRecord };
+                        cb(null, processingData);
+                    })
+                    .catch(cb);
+            },
+            (processingData, cb) => {
+                const { id } = processingData.createdRecord;
+                NAICSDepartmentRelationship.findOne({
+                    where: { id },
+                    include: [
+                        { model: NAICSType },
+                        { model: DepartmentType },
+                    ],
+                })
+                    .then((record) => {
+                        processingData.createdRecord = record;
+                        cb(null, processingData);
+                    })
+                    .catch(cb);
+            },
+        ], (waterFallErr, processingData) => {
+            if (waterFallErr) {
+                return next(waterFallErr);
+            }
+            return res.json(processingData.createdRecord);
+        });
+    });
+}
+
+function updateRelationship(req, res, next) {
+    const payload = req.body;
+    const { id } = req.params;
+
+    validateRelationshipUpdatePayload(payload, (err) => {
+        if (err) {
+            const e = new Error(err);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+
+        async.waterfall([
+            (cb) => {
+                const updates = { ...payload };
+
+                const updateOption = {
+                    where: {
+                        id,
+                    },
+                };
+                NAICSDepartmentRelationship.update(updates, updateOption)
+                    .then(() => {
+                        cb();
+                    })
+                    .catch(cb);
+            },
+            (cb) => {
+                NAICSDepartmentRelationship.findOne({
+                    where: { id },
+                    include: [
+                        { model: NAICSType },
+                        { model: DepartmentType },
+                    ],
+                })
+                    .then((record) => {
+                        const processingData ={
+                            updatedRecord: record
+                        };
+                        cb(null, processingData);
+                    })
+                    .catch(cb);
+            },
+        ], (waterFallErr, processingData) => {
+            if (waterFallErr) {
+                return next(waterFallErr);
+            }
+            return res.json(processingData.updatedRecord);
+        });
+    });
+}
+
+function deleteRelationship(req, res, next) {
+    const { id } = req.params;
+
+    NAICSDepartmentRelationship.destroy({ where: { id } })
+        .then(() => {
+            return res.json({
+                status: 'NAICS and deparment relationship record deleted successfully',
+            });
+        })
+        .catch(next);
 }
 
 export default {
-    getAll, create,
+    getAll, create, deleteRelationship, updateRelationship,
+};
+
+const validateRelationshipPayload = (payload, callback) => {
+    const {
+        naicsId,
+        departmentId,
+    } = payload;
+
+    if (!naicsId) {
+        return callback('The naicsId is missing');
+    }
+
+    if (!departmentId) {
+        return callback('The departmentId is missing');
+    }
+
+    async.waterfall([
+        (cb) => {
+            NAICSDepartmentRelationship.findOne({ where: { naicsId, departmentId } })
+                .then((record) => {
+                    if (!_.isEmpty(record)) {
+                        return cb('The relationship is already created for this NAICS id and department id');
+                    }
+
+                    return cb();
+                })
+                .catch(cb);
+        },
+        (cb) => {
+            async.parallel({
+                NAICSType: (done) => {
+                    NAICSType.findOne({ where: { id: naicsId } })
+                        .then((record) => {
+                            if (_.isEmpty(record)) {
+                                return done(`The NAICS record with id ${naicsId} does not exist`);
+                            }
+
+                            return done(null, record);
+                        })
+                        .catch(done);
+                },
+                departmentType: (done) => {
+                    DepartmentType.findOne({ where: { id: departmentId } })
+                        .then((record) => {
+                            if (_.isEmpty(record)) {
+                                return done(`The department record with id ${departmentId} does not exist`);
+                            }
+
+                            return done(null, record);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelResult) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                return cb(null, parallelResult);
+            });
+        },
+    ], (waterfallErr, waterFallResult) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+        return callback(null, waterFallResult);
+    });
+};
+
+const validateRelationshipUpdatePayload = (payload, callback) => {
+    const {
+        naicsId,
+        departmentId,
+    } = payload;
+
+    if (!naicsId) {
+        return callback('The naicsId is missing');
+    }
+
+    if (!departmentId) {
+        return callback('The departmentId is missing');
+    }
+
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                NAICSType: (done) => {
+                    NAICSType.findOne({ where: { id: naicsId } })
+                        .then((record) => {
+                            if (_.isEmpty(record)) {
+                                return done(`The NAICS record with id ${naicsId} does not exist`);
+                            }
+
+                            return done(null, record);
+                        })
+                        .catch(done);
+                },
+                departmentType: (done) => {
+                    DepartmentType.findOne({ where: { id: departmentId } })
+                        .then((record) => {
+                            if (_.isEmpty(record)) {
+                                return done(`The department record with id ${departmentId} does not exist`);
+                            }
+
+                            return done(null, record);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelResult) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                return cb(null, parallelResult);
+            });
+        },
+    ], (waterfallErr, waterFallResult) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+        return callback(null, waterFallResult);
+    });
 };
 
 const validateGetAllQuery = (query) => {
@@ -97,13 +321,8 @@ const validateGetAllQuery = (query) => {
     } = query;
     const allowedSortingColumn = [
         'id',
-        'sequenceNo',
-        'shortCode',
-        'NAICSGroup',
-        'code',
-        'title',
-        'year',
-        'status',
+        'naicsId',
+        'departmentId',
         'createdAt',
         'updatedAt',
     ];
@@ -143,38 +362,12 @@ const getAllWhereCondition = (query) => {
     if (query.id) {
         whereCondition.id = query.id;
     }
-    if (query.shortCode) {
-        whereCondition.shortCode = {
-            [Op.like]: `%${query.shortCode}%`,
-        };
+
+    if (query.naicsId) {
+        whereCondition.naicsId = query.naicsId;
     }
-    if (query.NAICSGroup) {
-        whereCondition.NAICSGroup = {
-            [Op.like]: `%${query.NAICSGroup}%`,
-        };
-    }
-    if (query.code) {
-        whereCondition.code = {
-            [Op.like]: `%${query.code}%`,
-        };
-    }
-    if (query.title) {
-        whereCondition.title = {
-            [Op.like]: `%${query.title}%`,
-        };
-    }
-    if (query.permitNo) {
-        whereCondition.permitNo = {
-            [Op.like]: `%${query.permitNo}%`,
-        };
-    }
-    if (query.status) {
-        whereCondition.status = {
-            [Op.like]: `%${query.status}%`,
-        };
-    }
-    if (query.year) {
-        whereCondition.year = query.year;
+    if (query.departmentId) {
+        whereCondition.departmentId = query.departmentId;
     }
 
     return whereCondition;

@@ -12,6 +12,7 @@ module.exports = {
         "max-len": [0],
         "no-use-before-define": [0],
         "no-restricted-globals": [0],
+        "radix": [0],
     },
     "parserOptions": {
         "sourceType": "module",

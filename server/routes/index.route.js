@@ -38,7 +38,7 @@ router.use('/naics-code', naicsCodesRoute);
 // mount department type routes
 router.use('/departmentType', departmentTypeRoute);
 
-// mount NAICS and department routes
+// mount NAICS and department relationship routes
 router.use('/naics-deparment', naicsDepartmentRelationshipRoute);
 
 export default router;
