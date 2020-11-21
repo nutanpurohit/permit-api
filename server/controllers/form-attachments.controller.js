@@ -64,6 +64,7 @@ function create(req, res, next) {
                 const docName = JSON.parse(payload.doc_name.replace(/\s+/g, ''));
                 const docNo = JSON.parse(payload.doc_no.replace(/\s+/g, ''));
                 const docType = JSON.parse(payload.doc_type.replace(/\s+/g, ''));
+                const fileType = JSON.parse(payload.file_type.replace(/\s+/g, ''));
 
                 const bulkCreatePayload = files.map((file, index) => {
                     return {
@@ -72,6 +73,7 @@ function create(req, res, next) {
                         documentType: docType[index],
                         url: `attachments/${file.filename}`,
                         applicationFormType: formType,
+                        fileType: fileType[index],
                     };
                 });
 

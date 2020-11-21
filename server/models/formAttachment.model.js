@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
         documentType: { type: DataTypes.STRING },
         url: { type: DataTypes.STRING(300) },
         applicationFormType: { type: DataTypes.STRING },
+        fileType: { type: DataTypes.STRING },
     });
 
     FormAttachment.sync();
