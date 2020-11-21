@@ -80,9 +80,60 @@ function getAll(req, res, next) {
     });
 }
 
+function create(req, res, next) {
+    const payload = req.body;
+
+    validateDepartmentPayload(payload, (err) => {
+        if (err) {
+            const e = new Error(err);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+
+        async.waterfall([
+            (cb) => {
+                DepartmentType.findOne({ where: { name: { [Op.like]: `%${payload.name}%` } } })
+                    .then((duplicateRecord) => {
+                        if (_.isEmpty(duplicateRecord)) {
+                            return cb();
+                        }
+
+                        const e = new Error(`The department already exist for ${payload.name}`);
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    })
+                    .catch(cb);
+            },
+            (cb) => {
+                DepartmentType.create(payload)
+                    .then((createdRecord) => {
+                        cb(null, createdRecord);
+                    })
+                    .catch(cb);
+            },
+        ], (waterFallErr, createdRecord) => {
+            if (waterFallErr) {
+                return next(waterFallErr);
+            }
+            return res.json(createdRecord);
+        });
+    });
+}
+
+function deleteDepartment(req, res, next) {
+    const { id } = req.params;
+
+    DepartmentType.destroy({ where: { id } })
+        .then(() => {
+            return res.json({
+                status: 'Department record deleted successfully',
+            });
+        })
+        .catch(next);
+}
 
 export default {
-    getAll,
+    getAll, create, deleteDepartment,
 };
 
 const validateGetAllQuery = (query) => {
@@ -138,4 +189,16 @@ const getAllWhereCondition = (query) => {
     }
 
     return whereCondition;
+};
+
+const validateDepartmentPayload = (payload, callback) => {
+    const {
+        name,
+    } = payload;
+
+    if (_.isEmpty(name)) {
+        return callback('Department name is missing');
+    }
+
+    return callback();
 };

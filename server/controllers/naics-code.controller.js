@@ -123,7 +123,6 @@ function create(req, res, next) {
     });
 }
 
-
 function deleteNaics(req, res, next) {
     const { id } = req.params;
 
