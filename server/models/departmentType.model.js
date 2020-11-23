@@ -13,6 +13,7 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
         },
         name: { type: DataTypes.STRING },
+        shortCode: { type: DataTypes.STRING },
     });
 
     DepartmentType.sync();
@@ -22,15 +23,15 @@ module.exports = (sequelize, DataTypes) => {
             .then((types) => {
                 if (_.isEmpty(types)) {
                     DepartmentType.bulkCreate([
-                        { name: 'Dept of Public Works' },
-                        { name: 'Guam Fire Department' },
-                        { name: 'Dept of Public Health and Social Services' },
-                        { name: 'Contractor’s License Board' },
-                        { name: 'Guam Visitors Bureau' },
-                        { name: 'Dept of Parks and Recreation' },
-                        { name: 'Guam Department of Education' },
-                        { name: 'Board of Licensure / Cosmetology' },
-                        { name: 'Guam Police Department' },
+                        { name: 'Dept of Public Works', shortCode: '' },
+                        { name: 'Guam Fire Department', shortCode: '' },
+                        { name: 'Dept of Public Health and Social Services', shortCode: '' },
+                        { name: 'Contractor’s License Board', shortCode: '' },
+                        { name: 'Guam Visitors Bureau', shortCode: '' },
+                        { name: 'Dept of Parks and Recreation', shortCode: '' },
+                        { name: 'Guam Department of Education', shortCode: '' },
+                        { name: 'Board of Licensure / Cosmetology', shortCode: '' },
+                        { name: 'Guam Police Department', shortCode: '' },
                     ]);
                 }
             });
