@@ -10,6 +10,16 @@ const {
     NAICSType,
 } = db;
 
+function get(req, res, next) {
+    const naicsId = req.params.id;
+    getNAICS(naicsId, (err, response) => {
+        if (err) {
+            return next(err);
+        }
+        return res.json(response);
+    });
+}
+
 function getAll(req, res, next) {
     const queryValidationErr = validateGetAllQuery(req.query);
     if (queryValidationErr) {
@@ -135,8 +145,78 @@ function deleteNaics(req, res, next) {
         .catch(next);
 }
 
+function updateNAICS(req, res, next) {
+    const payload = req.body;
+    const naicsId = req.params.id;
+    validateNaicsPayload(payload, (err) => {
+        if (err) {
+            const e = new Error(err);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+        payload.status = 'Active';
+
+        async.waterfall([
+            (cb) => {
+                const updateOption = {
+                    [Op.and]: [
+                        {
+                            code: payload.code,
+                        },
+                        {
+                            id: { [Op.ne]: naicsId },
+                        },
+                    ],
+                };
+
+                NAICSType.findOne({where: updateOption})
+                    .then((duplicateRecord) => {
+                        if (_.isEmpty(duplicateRecord)) {
+                            return cb();
+                        }
+
+                        const e = new Error(`The NAICS code already exist for ${payload.code}`);
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    })
+                    .catch(cb);
+            },
+            (cb) => {
+                const updates = { ...payload };
+                delete updates.naicsId;
+        
+                const updateOption = {
+                    where: {
+                        id: naicsId,
+                    },
+                };
+
+                NAICSType.update(updates, updateOption)
+                    .then(() => {
+                        getNAICS(naicsId, (err, response) => {
+                            if (err) {
+                                return next(err);
+                            }
+                            return res.json(response);
+                        });
+                    })
+                    .catch(() => {
+                        const e = new Error('An error occurred while updating the NAICS');
+                        e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                        return next(e);
+                    });
+            },
+        ], (waterFallErr, updatedRecord) => {
+            if (waterFallErr) {
+                return next(waterFallErr);
+            }
+            return res.json(updatedRecord);
+        });
+    });
+}
+
 export default {
-    getAll, create, deleteNaics,
+    get, getAll, create, deleteNaics, updateNAICS
 };
 
 const validateGetAllQuery = (query) => {
@@ -254,4 +334,46 @@ const validateNaicsPayload = (payload, callback) => {
     }
 
     return callback();
+};
+
+const getNAICS = (naicsId, callback) => {
+    async.waterfall([
+        // find form details
+        (cb) => {
+            let NAICSData = {};
+            NAICSType.findOne({
+                where: { id: naicsId }
+            })
+                .then((result) => {
+                    console.log(result)
+                    if (_.isEmpty(result.dataValues)) {
+                        const e = new Error('The NAICS with the given id do not exist');
+                        e.status = httpStatus.NOT_FOUND;
+                        return cb(e);
+                    }
+
+                    NAICSData = result;
+                    return cb(null, NAICSData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the NAICS details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        
+    ], (waterfallErr, NAICSData) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+         delete NAICSData.id;
+         delete NAICSData.sequenceNo;
+         delete NAICSData.shortCode;
+         delete NAICSData.NAICSGroup;
+         delete NAICSData.code;
+         delete NAICSData.title;
+         delete NAICSData.year;
+         delete NAICSData.status;
+         callback(null, NAICSData);
+    });
 };

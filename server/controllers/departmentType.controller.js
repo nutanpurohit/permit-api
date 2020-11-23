@@ -10,6 +10,16 @@ const {
     DepartmentType,
 } = db;
 
+function get(req, res, next) {
+    const departmentId = req.params.id;
+    getDepartment(departmentId, (err, response) => {
+        if (err) {
+            return next(err);
+        }
+        return res.json(response);
+    });
+}
+
 function getAll(req, res, next) {
     const queryValidationErr = validateGetAllQuery(req.query);
     if (queryValidationErr) {
@@ -132,8 +142,73 @@ function deleteDepartment(req, res, next) {
         .catch(next);
 }
 
+function updateDepartment(req, res, next) {
+    const payload = req.body;
+    const departmentId = req.params.id;
+
+    validateDepartmentPayload(payload, (err) => {
+        if (err) {
+            const e = new Error(err);
+            e.status = httpStatus.BAD_REQUEST;
+            return next(e);
+        }
+
+        async.waterfall([
+            (cb) => {
+                const updateOption = {
+                    where: {
+                        id: departmentId,
+                    },
+                };
+                
+                DepartmentType.findOne({ where: { name: { [Op.like]: `%${payload.name}%` } } })
+                    .then((duplicateRecord) => {
+                        if (_.isEmpty(duplicateRecord)) {
+                            return cb();
+                        }
+
+                        const e = new Error(`The department already exist for ${payload.name}`);
+                        e.status = httpStatus.BAD_REQUEST;
+                        return cb(e);
+                    })
+                    .catch(cb);
+            },
+            (cb) => {
+                const updates = { ...payload };
+                delete updates.departmentId;
+        
+                const updateOption = {
+                    where: {
+                        id: departmentId,
+                    },
+                };
+
+                DepartmentType.update(updates, updateOption)
+                    .then(() => {
+                        getDepartment(departmentId, (err, response) => {
+                            if (err) {
+                                return next(err);
+                            }
+                            return res.json(response);
+                        });
+                    })
+                    .catch(() => {
+                        const e = new Error('An error occurred while updating the department');
+                        e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                        return next(e);
+                    });
+            },
+        ], (waterFallErr, updatedRecord) => {
+            if (waterFallErr) {
+                return next(waterFallErr);
+            }
+            return res.json(updatedRecord);
+        });
+    });
+}
+
 export default {
-    getAll, create, deleteDepartment,
+    get, getAll, create, deleteDepartment, updateDepartment,
 };
 
 const validateGetAllQuery = (query) => {
@@ -201,4 +276,39 @@ const validateDepartmentPayload = (payload, callback) => {
     }
 
     return callback();
+};
+
+const getDepartment = (departmentId, callback) => {
+    async.waterfall([
+        // find form details
+        (cb) => {
+            let departmentData = {};
+            DepartmentType.findOne({
+                where: { id: departmentId }
+            })
+                .then((result) => {
+                    if (_.isEmpty(result.dataValues)) {
+                        const e = new Error('The department with the given id do not exist');
+                        e.status = httpStatus.NOT_FOUND;
+                        return cb(e);
+                    }
+
+                    departmentData = result;
+                    return cb(null, departmentData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the department details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        
+    ], (waterfallErr, departmentData) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+         delete departmentData.id;
+         delete departmentData.name;
+         callback(null, departmentData);
+    });
 };

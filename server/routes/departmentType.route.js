@@ -13,7 +13,13 @@ router.route('/')
 
 router.route('/:id')
 
+    /** GET /api/{version}/departmentType/:id - operations for specific departmentType */
+    .get(departmentTypeCtrl.get)
+    
     /** DELETE /api/{version}/departmentType/id - delete department types */
-    .delete(departmentTypeCtrl.deleteDepartment);
+    .delete(departmentTypeCtrl.deleteDepartment)
+
+    /** PUT /api/{version}/departmentType/id - update department types */
+    .put(departmentTypeCtrl.updateDepartment);
 
 export default router;
