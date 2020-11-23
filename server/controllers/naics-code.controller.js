@@ -154,7 +154,6 @@ function updateNAICS(req, res, next) {
             e.status = httpStatus.BAD_REQUEST;
             return next(e);
         }
-        payload.status = 'Active';
 
         async.waterfall([
             (cb) => {
@@ -215,8 +214,45 @@ function updateNAICS(req, res, next) {
     });
 }
 
+function updateNAICSStatus(req, res, next) {
+    const payload = req.body;
+    const naicsId = req.params.id;
+
+    async.waterfall([
+        (cb) => {
+            const updates = { ...payload };
+            delete updates.naicsId;
+    
+            const updateOption = {
+                where: {
+                    id: naicsId,
+                },
+            };
+            NAICSType.update(updates, updateOption)
+                .then(() => {
+                    getNAICS(naicsId, (err, response) => {
+                        if (err) {
+                            return next(err);
+                        }
+                        return res.json(response);
+                    });
+                })
+                .catch(() => {
+                    const e = new Error('An error occurred while updating the NAICS Status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return next(e);
+                });
+        },
+    ], (waterFallErr, updatedRecord) => {
+        if (waterFallErr) {
+            return next(waterFallErr);
+        }
+        return res.json(updatedRecord);
+    });
+}
+
 export default {
-    get, getAll, create, deleteNaics, updateNAICS
+    get, getAll, create, deleteNaics, updateNAICS, updateNAICSStatus
 };
 
 const validateGetAllQuery = (query) => {

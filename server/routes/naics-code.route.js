@@ -13,13 +13,19 @@ router.route('/')
 
 router.route('/:id')
 
-    /** GET /api/{version}/naics-code/:id - operations for specific NAICS codes */
+    /** GET /api/{version}/naics-code/:id - operations for specific NAICS */
     .get(naicsCodeCtrl.get)
 
     /** DELETE /api/{version}/naics-code/id - delete NAICS codes */
     .delete(naicsCodeCtrl.deleteNaics)
 
-    /** PUT /api/{version}/naics-code/id - update NAICS codes */
-    .put(naicsCodeCtrl.updateNAICS); 
+    /** PUT /api/{version}/naics-code/id - update NAICS */
+    .put(naicsCodeCtrl.updateNAICS)
+
+router.route('/status/:id')
+    /** PUT /api/{version}/naics-code/id - update NAICS Status */
+    .put(naicsCodeCtrl.updateNAICSStatus); 
+
+    
 
 export default router;
