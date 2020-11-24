@@ -18,7 +18,7 @@ function getAll(req, res, next) {
                 UsersRecord: (done) => {
                     Users.findOne({
                         where: whereCondition,
-                        attributes: ['Id', 'UserName'],
+                        attributes: ['Id', 'UserName','Email','PhoneNumber'],
                         raw: true,
                     })
                         .then((record) => {
