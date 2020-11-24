@@ -16,6 +16,9 @@ function getAll(req, res, next) {
                 questions: (done) => {
                     MoralCharacterQuestion.findAll({
                         where: whereCondition,
+                        order: [
+                            ['id', 'ASC'],
+                        ],
                     })
                         .then((records) => {
                             done(null, records);
