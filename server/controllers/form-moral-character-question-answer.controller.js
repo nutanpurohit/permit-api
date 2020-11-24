@@ -145,7 +145,9 @@ function create(req, res, next) {
             });
 
             FormMoralCharacterQuestionAnswer.bulkCreate(bulkCreatePayload)
-                .then(cb)
+                .then(() => {
+                    cb();
+                })
                 .catch(cb);
         },
     ], (waterfallErr) => {
