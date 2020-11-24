@@ -168,7 +168,7 @@ function updateNAICS(req, res, next) {
                     ],
                 };
 
-                NAICSType.findOne({where: updateOption})
+                NAICSType.findOne({ where: updateOption })
                     .then((duplicateRecord) => {
                         if (_.isEmpty(duplicateRecord)) {
                             return cb();
@@ -183,7 +183,7 @@ function updateNAICS(req, res, next) {
             (cb) => {
                 const updates = { ...payload };
                 delete updates.naicsId;
-        
+
                 const updateOption = {
                     where: {
                         id: naicsId,
@@ -222,7 +222,7 @@ function updateNAICSStatus(req, res, next) {
         (cb) => {
             const updates = { ...payload };
             delete updates.naicsId;
-    
+
             const updateOption = {
                 where: {
                     id: naicsId,
@@ -252,7 +252,7 @@ function updateNAICSStatus(req, res, next) {
 }
 
 export default {
-    get, getAll, create, deleteNaics, updateNAICS, updateNAICSStatus
+    get, getAll, create, deleteNaics, updateNAICS, updateNAICSStatus,
 };
 
 const validateGetAllQuery = (query) => {
@@ -378,10 +378,10 @@ const getNAICS = (naicsId, callback) => {
         (cb) => {
             let NAICSData = {};
             NAICSType.findOne({
-                where: { id: naicsId }
+                where: { id: naicsId },
             })
                 .then((result) => {
-                    console.log(result)
+                    console.log(result);
                     if (_.isEmpty(result.dataValues)) {
                         const e = new Error('The NAICS with the given id do not exist');
                         e.status = httpStatus.NOT_FOUND;
@@ -397,19 +397,19 @@ const getNAICS = (naicsId, callback) => {
                     return cb(e);
                 });
         },
-        
+
     ], (waterfallErr, NAICSData) => {
         if (waterfallErr) {
             return callback(waterfallErr);
         }
-         delete NAICSData.id;
-         delete NAICSData.sequenceNo;
-         delete NAICSData.shortCode;
-         delete NAICSData.NAICSGroup;
-         delete NAICSData.code;
-         delete NAICSData.title;
-         delete NAICSData.year;
-         delete NAICSData.status;
-         callback(null, NAICSData);
+        delete NAICSData.id;
+        delete NAICSData.sequenceNo;
+        delete NAICSData.shortCode;
+        delete NAICSData.NAICSGroup;
+        delete NAICSData.code;
+        delete NAICSData.title;
+        delete NAICSData.year;
+        delete NAICSData.status;
+        callback(null, NAICSData);
     });
 };

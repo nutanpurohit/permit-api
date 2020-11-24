@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import async from 'async';
 import Sequelize from 'sequelize';
 import db from '../../config/sequelize';
+import businessLicenseStatusMapping from '../dataFiles/businessLicenseStatusMapping';
 
 const { Op } = Sequelize;
 const {
@@ -17,6 +18,7 @@ const {
     NAICSDepartmentRelationship,
     DepartmentType,
     BusinessLicenseStateTransition,
+    BusinessLicenseAgencyReview,
 } = db;
 
 /**
@@ -142,9 +144,20 @@ function getAll(req, res, next) {
 
     async.waterfall([
         (cb) => {
+            getAllWhereCondition(req.query, (err, whereCondition) => {
+                if (err) {
+                    const e = new Error(queryValidationErr);
+                    e.status = httpStatus.BAD_REQUEST;
+                    return cb(e);
+                }
+                return cb(null, whereCondition);
+            });
+        },
+        (whereCondition, cb) => {
             async.parallel({
                 businessLicenseApplications: (done) => {
                     BusinessLicenseApplication.findAll({
+                        where: whereCondition,
                         attributes: projection,
                         offset,
                         limit,
@@ -837,6 +850,7 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                         return cb(e);
                     }
 
+                    processingData.statusType = statusType;
                     return cb(null, processingData);
                 })
                 .catch(() => {
@@ -905,6 +919,51 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                 return cb(null, processingData);
             });
         },
+        // if the status is "Agency Review" we need to insert the records for agency reviewing the application
+        (processingData, cb) => {
+            const status = processingData.statusType.name;
+            if (status !== 'Agency Review') {
+                return cb(null, processingData);
+            }
+
+            FormNAICSRelationship.findAll({
+                where: { applicationFormId: applicationId, applicationFormType: 'businessLicense' },
+                include: [
+                    {
+                        model: NAICSType,
+                        include: [{ model: NAICSDepartmentRelationship }],
+                    },
+                ],
+            })
+                .then((formNAICSRelationships) => {
+                    processingData.formNAICSRelationships = formNAICSRelationships;
+                    return cb(null, processingData);
+                })
+                .catch((err) => {
+                    return cb(err);
+                });
+        },
+        (processingData, cb) => {
+            const bulkCreateObj = [];
+            processingData.formNAICSRelationships.forEach((formNAICSRelationship) => {
+                const NAICSDepartmentRelationships = formNAICSRelationship.NAICSType ? formNAICSRelationship.NAICSType.NAICSDepartmentRelationships : [];
+                NAICSDepartmentRelationships.forEach((NAICSDepartmentRelationshipObj) => {
+                    const duplicateRecord = bulkCreateObj.find((createObj) => createObj.departmentId === NAICSDepartmentRelationshipObj.departmentId);
+                    if (!duplicateRecord) {
+                        bulkCreateObj.push({
+                            applicationFormId: applicationId,
+                            departmentId: NAICSDepartmentRelationshipObj.departmentId,
+                        });
+                    }
+                });
+            });
+
+            BusinessLicenseAgencyReview.bulkCreate(bulkCreateObj)
+                .then(() => {
+                    cb();
+                })
+                .catch(cb);
+        },
     ], (waterfallErr, waterfallResponse) => {
         if (waterfallErr) {
             return callback(waterfallErr);
@@ -912,4 +971,33 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
 
         return callback(null, waterfallResponse);
     });
+};
+
+const getAllWhereCondition = (query, callback) => {
+    const whereCondition = {};
+
+    // async.waterfall([
+    //     (cb) => {
+    //         if (!query.claim) {
+    //             return cb();
+    //         }
+    //
+    //         const claimObj = businessLicenseStatusMapping[query.claim];
+    //         if (!claimObj) {
+    //             return cb('The user is not allowed to view the business license application forms');
+    //         }
+    //
+    //         if (!claimObj.agencyReview) {
+    //             whereCondition.applicationStatusId = claimObj.allowedStatusIds;
+    //             return cb();
+    //         }
+    //
+    //
+    //     },
+    // ], () => {
+    //
+    // });
+
+
+    callback(null, whereCondition);
 };

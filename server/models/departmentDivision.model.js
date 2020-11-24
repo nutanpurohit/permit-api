@@ -13,7 +13,9 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
         },
         name: { type: DataTypes.STRING },
+        departmentId: { type: DataTypes.BIGINT.UNSIGNED },
         shortCode: { type: DataTypes.STRING },
+        claim: { type: DataTypes.STRING(100) },
     });
 
     DepartmentDivision.sync();
@@ -22,7 +24,17 @@ module.exports = (sequelize, DataTypes) => {
         DepartmentDivision.findAll()
             .then((types) => {
                 if (_.isEmpty(types)) {
-                    // TODO
+                    DepartmentDivision.bulkCreate([
+                        {
+                            name: 'DRT Collection', departmentId: 11, shortCode: '', claim: 'DRT-COLLECTION',
+                        },
+                        {
+                            name: 'Real Property Tax', departmentId: 11, shortCode: '', claim: 'DRT-RPT',
+                        },
+                        {
+                            name: 'Business License Bureau', departmentId: 11, shortCode: '', claim: 'DRT-BLB',
+                        },
+                    ]);
                 }
             });
     };

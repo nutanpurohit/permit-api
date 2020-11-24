@@ -54,8 +54,9 @@ function create(req, res, next) {
             const payload = req.body;
             const { files } = req;
 
-            if (_.isEmpty(files) || _.isEmpty(payload.doc_name) || _.isEmpty(payload.doc_no) || _.isEmpty(payload.doc_type)) {
-                const e = new Error('Either files, doc_name, doc_no, or doc_type is missing');
+            if (_.isEmpty(files) || _.isEmpty(payload.doc_name) || _.isEmpty(payload.doc_no) || _.isEmpty(payload.doc_type)
+                || _.isEmpty(payload.file_type)) {
+                const e = new Error('Either files, doc_name, doc_no, file_type, or doc_type is missing');
                 e.status = httpStatus.BAD_REQUEST;
                 return next(e);
             }
