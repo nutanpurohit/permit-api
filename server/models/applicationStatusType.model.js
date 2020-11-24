@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
         },
         name: { type: DataTypes.STRING },
+        applicationFormType: { type: DataTypes.STRING },
     });
 
     ApplicationStatusType.sync();
@@ -23,12 +24,22 @@ module.exports = (sequelize, DataTypes) => {
             .then((types) => {
                 if (_.isEmpty(types)) {
                     ApplicationStatusType.bulkCreate([
-                        { name: 'Received' },
-                        { name: 'In Review' },
-                        { name: 'Approved' },
-                        { name: 'Save as Draft' },
-                        { name: 'Sent' },
-                        { name: 'Submit' },
+                        { name: 'Draft', applicationFormType: 'businessLicense' },
+                        { name: 'Submitted', applicationFormType: 'businessLicense' },
+                        { name: 'DRT BLB Received', applicationFormType: 'businessLicense' },
+                        { name: 'DRT BLB Request Correction', applicationFormType: 'businessLicense' },
+                        { name: 'DRT RPT Review', applicationFormType: 'businessLicense' },
+                        { name: 'DRT RPT Review Complete', applicationFormType: 'businessLicense' },
+                        { name: 'DLM Review', applicationFormType: 'businessLicense' },
+                        { name: 'DLM Review Complete', applicationFormType: 'businessLicense' },
+                        { name: 'Agency Review', applicationFormType: 'businessLicense' },
+                        { name: 'Agency Review Complete', applicationFormType: 'businessLicense' },
+                        { name: 'DRT Collections Review', applicationFormType: 'businessLicense' },
+                        { name: 'DRT Collections Review Complete', applicationFormType: 'businessLicense' },
+                        { name: 'Cancelled', applicationFormType: 'businessLicense' },
+                        { name: 'Disapproved', applicationFormType: 'businessLicense' },
+                        { name: 'Approved-License Issued', applicationFormType: 'businessLicense' },
+                        { name: 'Hold', applicationFormType: 'businessLicense' },
                     ]);
                 }
             });

@@ -16,6 +16,7 @@ const {
     FormNAICSRelationship,
     NAICSDepartmentRelationship,
     DepartmentType,
+    BusinessLicenseStateTransition,
 } = db;
 
 /**
@@ -342,8 +343,28 @@ function globalSearch(req, res, next) {
     });
 }
 
+function changeApplicationStatus(req, res, next) {
+    const payload = req.body;
+    const applicationId = req.params.id;
+
+    processChangeApplicationStatus(applicationId, payload, (validateErr) => {
+        if (validateErr) {
+            return next(validateErr);
+        }
+
+        return res.json({
+            status: 'Application status updated successfully',
+        });
+    });
+}
+
 export default {
-    get, create, getAll, updateApplicationForm, globalSearch,
+    get,
+    create,
+    getAll,
+    updateApplicationForm,
+    globalSearch,
+    changeApplicationStatus,
 };
 
 const validateCreatePayload = (payload, callback) => {
@@ -771,4 +792,124 @@ const getFormNAICSDepartment = (formNaicsIds, callback) => {
             callback(null, finalResponse);
         })
         .catch(callback);
+};
+
+const processChangeApplicationStatus = (applicationId, payload, callback) => {
+    const { applicationStatusId } = payload;
+    if (!applicationStatusId) {
+        const e = new Error('The application status is not set');
+        e.status = httpStatus.NOT_FOUND;
+        return callback(e);
+    }
+
+    async.waterfall([
+        // validate the form exist
+        (cb) => {
+            BusinessLicenseApplication.findOne({
+                where: { id: applicationId },
+                raw: true,
+            })
+                .then((applicationForm) => {
+                    if (_.isEmpty(applicationForm)) {
+                        const e = new Error('The business license application form with the given id do not exist');
+                        e.status = httpStatus.NOT_FOUND;
+                        return cb(e);
+                    }
+
+                    const processingData = { applicationForm };
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the business license application form details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // check that the application status type exist
+        (processingData, cb) => {
+            ApplicationStatusType.findOne({
+                where: { id: applicationStatusId },
+            })
+                .then((statusType) => {
+                    if (_.isEmpty(statusType)) {
+                        const e = new Error('The application status type do not exist');
+                        e.status = httpStatus.NOT_FOUND;
+                        return cb(e);
+                    }
+
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // find the recent application status that was transit
+        (processingData, cb) => {
+            BusinessLicenseStateTransition.findAll({
+                where: { applicationFormId: applicationId },
+                limit: 1,
+                order: [['stateChangeDate', 'DESC']],
+            })
+                .then((lastApplicationStates) => {
+                    let fromState = null;
+                    if (!_.isEmpty(lastApplicationStates)) {
+                        fromState = lastApplicationStates[0].toState;
+                    }
+
+                    processingData.fromState = fromState;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the application status');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        // update the state of application form as well the state transition table
+        (processingData, cb) => {
+            async.parallel({
+                update_application: (done) => {
+                    const updates = { applicationStatusId };
+
+                    const updateOption = {
+                        where: {
+                            id: applicationId,
+                        },
+                    };
+
+                    BusinessLicenseApplication.update(updates, updateOption)
+                        .then(() => {
+                            done();
+                        })
+                        .catch(done);
+                },
+                insert_state_transition: (done) => {
+                    const createObj = {
+                        applicationFormId: applicationId,
+                        fromState: processingData.fromState,
+                        toState: applicationStatusId,
+                        stateChangeDate: new Date(),
+                    };
+                    BusinessLicenseStateTransition.create(createObj)
+                        .then(() => {
+                            done();
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                return cb(null, processingData);
+            });
+        },
+    ], (waterfallErr, waterfallResponse) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+
+        return callback(null, waterfallResponse);
+    });
 };

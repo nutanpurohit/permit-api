@@ -36,7 +36,7 @@ function getAll(req, res, next) {
         },
         applicationStatusTypes: (cb) => {
             ApplicationStatusType
-                .findAll()
+                .findAll({ where: { applicationFormType: 'businessLicense' } })
                 .then((allTypes) => cb(null, allTypes))
                 .catch((err) => {
                     cb(err);
