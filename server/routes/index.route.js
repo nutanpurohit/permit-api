@@ -8,6 +8,8 @@ import formAttachments from './form-attachments.route';
 import naicsCodesRoute from './naics-code.route';
 import departmentTypeRoute from './departmentType.route';
 import naicsDepartmentRelationshipRoute from './naics-deparment-relationship.route';
+import moralCharacterQuestionRoute from './moral-character-question.route';
+import moralCharacterAnswerRoute from './form-moral-character-question-answer.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -40,5 +42,11 @@ router.use('/departmentType', departmentTypeRoute);
 
 // mount NAICS and department relationship routes
 router.use('/naics-deparment', naicsDepartmentRelationshipRoute);
+
+// mount moral question route
+router.use('/moral-character-question', moralCharacterQuestionRoute);
+
+// mount form moral-character-question-answers routes
+router.use('/moral-character-answers', moralCharacterAnswerRoute);
 
 export default router;

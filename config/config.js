@@ -62,6 +62,7 @@ const config = {
         ssl_ca_cert: envVars.UNIQUE_NAME_PG_CERT_CA,
     },
     loggerName: 'permitLog',
+    identityServer: envVars.IDENTITY_SERVER,
 };
 
 export default config;
