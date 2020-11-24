@@ -10,6 +10,7 @@ import departmentTypeRoute from './departmentType.route';
 import naicsDepartmentRelationshipRoute from './naics-deparment-relationship.route';
 import moralCharacterQuestionRoute from './moral-character-question.route';
 import moralCharacterAnswerRoute from './form-moral-character-question-answer.route';
+import userRoute from './user.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -48,5 +49,8 @@ router.use('/moral-character-question', moralCharacterQuestionRoute);
 
 // mount form moral-character-question-answers routes
 router.use('/moral-character-answers', moralCharacterAnswerRoute);
+
+// mount user routes
+router.use('/users', userRoute);
 
 export default router;
