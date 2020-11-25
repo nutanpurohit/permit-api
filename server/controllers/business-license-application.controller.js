@@ -3,7 +3,6 @@ import * as _ from 'lodash';
 import async from 'async';
 import Sequelize from 'sequelize';
 import db from '../../config/sequelize';
-import businessLicenseStatusMapping from '../dataFiles/businessLicenseStatusMapping';
 
 const { Op } = Sequelize;
 const {
@@ -19,6 +18,8 @@ const {
     DepartmentType,
     BusinessLicenseStateTransition,
     BusinessLicenseAgencyReview,
+    DepartmentDivision,
+    DepartmentAllowedFormStatus,
 } = db;
 
 /**
@@ -30,6 +31,7 @@ const {
  */
 function create(req, res, next) {
     const payload = req.body;
+    payload.applicantId = _.get(req, 'authentication.jwt.payload.sub', null);
 
     validateCreatePayload(payload, (validationErr) => {
         if (validationErr) {
@@ -144,7 +146,7 @@ function getAll(req, res, next) {
 
     async.waterfall([
         (cb) => {
-            getAllWhereCondition(req.query, (err, whereCondition) => {
+            getAllWhereCondition(req, (err, whereCondition) => {
                 if (err) {
                     const e = new Error(queryValidationErr);
                     e.status = httpStatus.BAD_REQUEST;
@@ -171,7 +173,9 @@ function getAll(req, res, next) {
                         .catch(done);
                 },
                 total: (done) => {
-                    BusinessLicenseApplication.count()
+                    BusinessLicenseApplication.count({
+                        where: whereCondition,
+                    })
                         .then((count) => {
                             return done(null, count);
                         })
@@ -897,7 +901,9 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                         .then(() => {
                             done();
                         })
-                        .catch(done);
+                        .catch((err) => {
+                            done(err);
+                        });
                 },
                 insert_state_transition: (done) => {
                     const createObj = {
@@ -910,7 +916,9 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                         .then(() => {
                             done();
                         })
-                        .catch(done);
+                        .catch((err) => {
+                            done(err);
+                        });
                 },
             }, (parallelErr) => {
                 if (parallelErr) {
@@ -922,6 +930,7 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
         // if the status is "Agency Review" we need to insert the records for agency reviewing the application
         (processingData, cb) => {
             const status = processingData.statusType.name;
+            processingData.formNAICSRelationships = [];
             if (status !== 'Agency Review') {
                 return cb(null, processingData);
             }
@@ -973,31 +982,79 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
     });
 };
 
-const getAllWhereCondition = (query, callback) => {
+const getAllWhereCondition = (req, callback) => {
+    const { query } = req;
     const whereCondition = {};
+    async.waterfall([
+        (cb) => {
+            const { claimType, claimValue } = query;
+            if (!claimType || !claimValue) {
+                return cb();
+            }
 
-    // async.waterfall([
-    //     (cb) => {
-    //         if (!query.claim) {
-    //             return cb();
-    //         }
-    //
-    //         const claimObj = businessLicenseStatusMapping[query.claim];
-    //         if (!claimObj) {
-    //             return cb('The user is not allowed to view the business license application forms');
-    //         }
-    //
-    //         if (!claimObj.agencyReview) {
-    //             whereCondition.applicationStatusId = claimObj.allowedStatusIds;
-    //             return cb();
-    //         }
-    //
-    //
-    //     },
-    // ], () => {
-    //
-    // });
+            if (claimType === 'reviewer') {
+                return DepartmentDivision.findOne(
+                    { where: { claim: claimValue } },
+                )
+                    .then((departmentDivision) => {
+                        if (_.isEmpty(departmentDivision)) {
+                            return cb('The reviewer does not exist in the system');
+                        }
+                        DepartmentAllowedFormStatus.findOne(
+                            { where: { departmentDivisionId: departmentDivision.id, departmentId: departmentDivision.departmentId } },
+                        )
+                            .then((allowedFormStatus) => {
+                                if (_.isEmpty(allowedFormStatus)) {
+                                    return cb();
+                                }
+                                whereCondition.applicationStatusId = allowedFormStatus.allowedApplicationStatusIds;
+                                cb();
+                            })
+                            .catch(() => {
+                                return cb('something went wrong while finding allowed form status for the department division');
+                            });
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking department divisions');
+                    });
+            }
 
+            if (claimType === 'department') {
+                return DepartmentType.findOne(
+                    { where: { claim: claimValue } },
+                )
+                    .then((department) => {
+                        if (_.isEmpty(department)) {
+                            return cb('The department does not exist in the system');
+                        }
+                        DepartmentAllowedFormStatus.findOne(
+                            { where: { departmentDivisionId: { [Op.eq]: null }, departmentId: department.id } },
+                        )
+                            .then((allowedFormStatus) => {
+                                if (_.isEmpty(allowedFormStatus)) {
+                                    return cb();
+                                }
+                                whereCondition.applicationStatusId = allowedFormStatus.allowedApplicationStatusIds;
+                                cb();
+                            })
+                            .catch(() => {
+                                return cb('something went wrong while finding allowed form status for the department division');
+                            });
+                    })
+                    .catch(() => {
+                        return cb('something went wrong while checking department divisions');
+                    });
+            }
 
-    callback(null, whereCondition);
+            if (claimType === 'applicant') {
+                whereCondition.applicantId = _.get(req, 'authentication.jwt.payload.sub', null);
+                return cb();
+            }
+        },
+    ], (err) => {
+        if (err) {
+            return callback(err);
+        }
+        callback(null, whereCondition);
+    });
 };

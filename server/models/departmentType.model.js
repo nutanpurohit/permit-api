@@ -24,17 +24,17 @@ module.exports = (sequelize, DataTypes) => {
             .then((types) => {
                 if (_.isEmpty(types)) {
                     DepartmentType.bulkCreate([
-                        { name: 'Dept of Public Works', shortCode: '', claim: 'Dept of Public Works' },
-                        { name: 'Guam Fire Department', shortCode: '', claim: 'Guam Fire Department' },
-                        { name: 'Dept of Public Health and Social Services', shortCode: '', claim: 'Dept of Public Health and Social Services' },
-                        { name: 'Contractor’s License Board', shortCode: '', claim: 'Contractor’s License Board' },
-                        { name: 'Guam Visitors Bureau', shortCode: '', claim: 'Guam Visitors Bureau' },
-                        { name: 'Dept of Parks and Recreation', shortCode: '', claim: 'Dept of Parks and Recreation' },
-                        { name: 'Guam Department of Education', shortCode: '', claim: 'Guam Department of Education' },
-                        { name: 'Board of Licensure / Cosmetology', shortCode: '', claim: 'Board of Licensure / Cosmetology' },
-                        { name: 'Guam Police Department', shortCode: '', claim: 'Guam Police Department' },
-                        { name: 'Dept of Revenue and Tax', shortCode: '', claim: 'Dept of Revenue and Tax' },
-                        { name: 'Dept of Land Management', shortCode: '', claim: 'Dept of Land Management' },
+                        { name: 'Dept of Public Works', shortCode: 'DPW', claim: 'Dept of Public Works' },
+                        { name: 'Guam Fire Department', shortCode: 'GFD', claim: 'Guam Fire Department' },
+                        { name: 'Dept of Public Health and Social Services', shortCode: 'DPHSS', claim: 'Dept of Public Health and Social Services' },
+                        { name: 'Contractor’s License Board', shortCode: 'CLB', claim: 'Contractor’s License Board' },
+                        { name: 'Guam Visitors Bureau', shortCode: 'GVB', claim: 'Guam Visitors Bureau' },
+                        { name: 'Dept of Parks and Recreation', shortCode: 'DPR', claim: 'Dept of Parks and Recreation' },
+                        { name: 'Guam Department of Education', shortCode: 'GDOE', claim: 'Guam Department of Education' },
+                        { name: 'Board of Licensure / Cosmetology', shortCode: 'BLC', claim: 'Board of Licensure / Cosmetology' },
+                        { name: 'Guam Police Department', shortCode: 'GPD', claim: 'Guam Police Department' },
+                        { name: 'Dept of Revenue and Tax', shortCode: 'DRT', claim: 'Dept of Revenue and Tax' },
+                        { name: 'Dept of Land Management', shortCode: 'DLM', claim: 'Dept of Land Management' },
                     ]);
                 }
             });
