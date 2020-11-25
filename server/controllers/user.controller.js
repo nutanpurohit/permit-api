@@ -17,7 +17,7 @@ function getAll(req, res, next) {
                 UsersRecord: (done) => {
                     Users.findOne({
                         where: whereCondition,
-                        attributes: ['Id', 'UserName','Email','PhoneNumber'],
+                        attributes: ['Id', 'UserName', 'Email', 'PhoneNumber'],
                         raw: true,
                     })
                         .then((record) => {
@@ -71,9 +71,14 @@ function getAll(req, res, next) {
                 if (parallelErr) {
                     return cb(parallelErr);
                 }
-
+                let userRole;
+                if (parallelRes.userRoleData) {
+                    userRole = parallelRes.userRoleData.Role.Name;
+                } else {
+                    userRole = null;
+                }
                 processingData.userRecord.userClaim = parallelRes.userClaimData;
-                processingData.userRecord.userRole = parallelRes.userRoleData.Role.Name;
+                processingData.userRecord.userRole = userRole;
                 cb(null, processingData);
             });
         },
