@@ -20,6 +20,12 @@ module.exports = (sequelize, DataTypes) => {
 
     DepartmentDivision.sync();
 
+    DepartmentDivision.registerModels = (db) => {
+        const { DepartmentType } = db;
+
+        DepartmentDivision.belongsTo(DepartmentType, { foreignKey: 'departmentId' });
+    };
+
     DepartmentDivision.addDefaultRecords = () => {
         DepartmentDivision.findAll()
             .then((types) => {

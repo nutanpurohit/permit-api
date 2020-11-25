@@ -25,6 +25,8 @@ module.exports = (sequelize, DataTypes) => {
                     AnswerType.bulkCreate([
                         { name: 'YES' },
                         { name: 'NO' },
+                        { name: 'Other' },
+                        { name: 'N/A' },
                     ]);
                 }
             });
