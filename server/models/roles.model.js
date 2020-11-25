@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         Name: { type: DataTypes.TEXT },
         NormalizedName: { type: DataTypes.TEXT },
-        CuncurrencyStamp: { type: DataTypes.TEXT },
+        ConcurrencyStamp: { type: DataTypes.TEXT },
     },{
         timestamps: false
     });
