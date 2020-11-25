@@ -158,8 +158,74 @@ function create(req, res, next) {
     });
 }
 
+function updateFormMoralCharacterQA(req, res, next) {
+    const { formType, formId } = req.params;
+    const payload = req.body;
+    const formTypeErr = validateAllowedFormType(formType);
+
+    if (formTypeErr) {
+        const e = new Error(formTypeErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+
+    async.waterfall([
+        (cb) => {
+            validateAllowedFormExist(formType, formId, (err) => {
+                if (err) {
+                    const e = new Error(err);
+                    e.status = httpStatus.BAD_REQUEST;
+                    return cb(e);
+                }
+
+                if (
+                    _.isEmpty(payload)
+                ) {
+                    const e = new Error('payload cannot be empty');
+                    e.status = httpStatus.BAD_REQUEST;
+                    return cb(e);
+                }
+
+                return cb();
+            });
+        },
+        (cb) => {
+            async.eachSeries(payload, (payloadObj, eachCb) => {
+                const updates = { ...payloadObj };
+                delete updates.id;
+        
+                const updateOption = {
+                    where: {
+                        id: payloadObj.id,
+                    },
+                };
+                FormMoralCharacterQuestionAnswer.update(updates, updateOption)
+                    .then(() => {
+                        eachCb();
+                    })
+                    .catch(() => {
+                        const e = new Error('An error occurred while updating the Answer');
+                        e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                        return next(e);
+                    });
+                cb();
+            }, (eachErr) => {
+                if (eachErr) {
+                    return cb(eachErr);
+                }
+                return cb(null, processingData);
+            });
+        },
+    ], (waterfallErr) => {
+        if (waterfallErr) {
+            return next(waterfallErr);
+        }
+        return res.json({ status: 'Answers updated successfully' });
+    });
+}
+
 export default {
-    getAllAnswers, create,
+    getAllAnswers, create, updateFormMoralCharacterQA
 };
 
 const validateAllowedFormType = (formType) => {
