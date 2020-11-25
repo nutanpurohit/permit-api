@@ -1,5 +1,3 @@
-import * as _ from 'lodash';
-
 let UserTokens;
 
 /**
@@ -11,8 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         LoginProvider: { type: DataTypes.TEXT },
         Name: { type: DataTypes.TEXT },
         Value: { type: DataTypes.TEXT },
+    }, {
+        timestamps: false,
+        freezeTableName: true,
     });
-
+    UserTokens.removeAttribute('id');
     UserTokens.sync();
 
     UserTokens.registerModels = (db) => {

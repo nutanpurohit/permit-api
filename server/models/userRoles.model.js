@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 
 let UserRoles;
 

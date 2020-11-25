@@ -1,13 +1,12 @@
 import async from 'async';
 import httpStatus from 'http-status';
-import * as _ from 'lodash';
-import Sequelize from 'sequelize';
 import db from '../../config/sequelize';
 
 const {
     Users,
     UserClaims,
     UserRoles,
+    Roles,
 } = db;
 
 function getAll(req, res, next) {
@@ -59,6 +58,9 @@ function getAll(req, res, next) {
                 userRoleData: (done) => {
                     UserRoles.findOne({
                         where: whereConditionObj,
+                        include: [
+                            { model: Roles },
+                        ],
                     })
                         .then((record) => {
                             return done(null, record);
@@ -71,7 +73,7 @@ function getAll(req, res, next) {
                 }
 
                 processingData.userRecord.userClaim = parallelRes.userClaimData;
-                processingData.userRecord.userRole = parallelRes.userRoleData;
+                processingData.userRecord.userRole = parallelRes.userRoleData.Role;
                 cb(null, processingData);
             });
         },

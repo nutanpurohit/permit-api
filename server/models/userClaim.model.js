@@ -1,5 +1,3 @@
-import * as _ from 'lodash';
-
 let UserClaims;
 
 /**
@@ -17,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
         ClaimType: { type: DataTypes.TEXT },
         ClaimValue: { type: DataTypes.TEXT },
     }, {
-        timestamps: false
+        timestamps: false,
     });
 
     UserClaims.sync();
