@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 import db from '../../config/sequelize';
 
 const {
-    FormComment,
+    FormComment, FormCommentAttachment
 } = db;
 
 
@@ -28,18 +28,50 @@ function getAll(req, res, next) {
 
     const offset = start;
 
-    FormComment.findAll({
-        where: { formId, applicationFormType: formType },
-        offset,
-        limit,
-        order: [
-            [sortColumn, sortBy.toUpperCase()],
-        ],
-    })
-        .then((comments) => {
-            return res.json(comments);
-        })
-        .catch(next);
+    async.waterfall([
+        (cb) => {
+            const processingData = {
+            };
+            FormComment.findAll({
+                where: { formId, applicationFormType: formType },
+                offset,
+                limit,
+                order: [
+                    [sortColumn, sortBy.toUpperCase()],
+                ],
+            })
+                .then((comments) => {
+                    processingData.comments = comments;
+                    cb(null, processingData);
+                })
+                .catch(next);
+        },
+        (processingData, cb) => {
+            processingData.completeData = [];
+            
+            async.eachSeries(processingData.comments, (applicationObj, eachCb) => {
+                getSingleComment(applicationObj.id, (err, response) => {
+                    if (err) {
+                        return eachCb(err);
+                    }
+                    processingData.completeData.push(response);
+                    eachCb();
+                });
+            }, (eachErr) => {
+                if (eachErr) {
+                    return cb(eachErr);
+                }
+                return cb(null, processingData);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+        const response = processingData.completeData;
+        return res.json(response);
+    });
+
 }
 
 function create(req, res, next) {
@@ -133,73 +165,6 @@ const validateAllowedFormType = (formType) => {
     return null;
 };
 
-function getAll1(req, res, next) {
-    const { formId, formType } = req.params;
-    const queryValidationErr = validateGetAllQuery(req.query);
-    const formTypeErr = validateAllowedFormType(formType);
-
-    if (queryValidationErr || formTypeErr) {
-        const e = new Error(queryValidationErr || formTypeErr);
-        e.status = httpStatus.BAD_REQUEST;
-        return next(e);
-    }
-
-    
-    const {
-        limit = 10,
-        start = 0,
-        sortColumn = 'id',
-        sortBy = 'DESC',
-    } = req.query;
-
-    const offset = start;
-
-    async.waterfall([
-        (cb) => {
-            const processingData = {
-            };
-            FormComment.findAll({
-                where: { formId, applicationFormType: formType },
-                offset,
-                limit,
-                order: [
-                    [sortColumn, sortBy.toUpperCase()],
-                ],
-            })
-                .then((comments) => {
-                    processingData.comments = comments;
-                    return cb(null, processingData);
-                })
-                .catch(next);
-        },
-        (processingData, cb) => {
-            processingData.completeData = [];
-            async.eachSeries(processingData.comments, (applicationObj, eachCb) => {
-
-                getSingleComment(applicationObj.id, (err, response) => {
-                    if (err) {
-                        return eachCb(err);
-                    }
-
-                    processingData.completeData.push(response.applicationForm);
-                    return eachCb();
-                });
-            }, (eachErr) => {
-                if (eachErr) {
-                    return cb(eachErr);
-                }
-                return cb(null, processingData);
-            });
-        },
-    ], (err, processingData) => {
-        if (err) {
-            return next(err);
-        }
-        return res.json(processingData);
-    });
-
-}
-
 const getSingleComment = (commentId, callback) => {
     async.waterfall([
         // find form details
@@ -216,7 +181,7 @@ const getSingleComment = (commentId, callback) => {
                         return cb(e);
                     }
                     processingData.commentForm = comment;
-                    return cb(null, processingData);
+                    cb(null, processingData);
                 })
                 .catch(() => {
                     const e = new Error('Something went wrong while finding the comment details');
@@ -230,12 +195,12 @@ const getSingleComment = (commentId, callback) => {
             if (_.isEmpty(attachments)) {
                 return cb(null, processingData);
             }
-            FormAttachment.findAll({
+            FormCommentAttachment.findAll({
                 where: { id: attachments },
             })
                 .then((attachmentRecords) => {
                     processingData.commentForm.attachments = attachmentRecords;
-                    return cb(null, processingData);
+                    cb(null, processingData);
                 })
                 .catch(() => {
                     const e = new Error('Something went wrong while finding comment attachments');
@@ -248,6 +213,6 @@ const getSingleComment = (commentId, callback) => {
             return callback(waterfallErr);
         }
 
-        callback(null, processingData);
+        return callback(null, processingData.commentForm);
     });
 };
