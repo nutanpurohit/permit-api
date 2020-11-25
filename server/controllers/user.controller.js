@@ -73,7 +73,7 @@ function getAll(req, res, next) {
                 }
 
                 processingData.userRecord.userClaim = parallelRes.userClaimData;
-                processingData.userRecord.userRole = parallelRes.userRoleData.Role;
+                processingData.userRecord.userRole = parallelRes.userRoleData.Role.Name;
                 cb(null, processingData);
             });
         },
