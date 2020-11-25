@@ -9,6 +9,9 @@ router.route('/:formType/:formId')
     .post(moralCharacterAnswersCtrl.create)
 
     /** GET /api/{version}/moral-character-answers/:formType/:formId - get the moral character answers */
-    .get(moralCharacterAnswersCtrl.getAllAnswers);
+    .get(moralCharacterAnswersCtrl.getAllAnswers)
+
+    /** PUT /api/{version}/moral-character-answers/:formType/:formId - Update the moral character answers */
+    .put(moralCharacterAnswersCtrl.updateFormMoralCharacterQA);
 
 export default router;
