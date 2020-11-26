@@ -148,7 +148,7 @@ function getAll(req, res, next) {
         (cb) => {
             getAllWhereCondition(req, (err, whereCondition) => {
                 if (err) {
-                    const e = new Error(queryValidationErr);
+                    const e = new Error(err);
                     e.status = httpStatus.BAD_REQUEST;
                     return cb(e);
                 }
@@ -293,7 +293,7 @@ function globalSearch(req, res, next) {
         (cb) => {
             getAllWhereCondition(req, (err, queryParamWhereCondition) => {
                 if (err) {
-                    const e = new Error(queryValidationErr);
+                    const e = new Error(err);
                     e.status = httpStatus.BAD_REQUEST;
                     return cb(e);
                 }
