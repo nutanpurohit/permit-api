@@ -889,7 +889,18 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
         (processingData, cb) => {
             async.parallel({
                 update_application: (done) => {
-                    const updates = { applicationStatusId };
+                    const updates = { };
+                    // if the status is "DRT BLB Request Correction" we do not change the status of application
+                    // instead we need to set the isCorrectionRequired property to true
+                    const status = processingData.statusType.name;
+                    if (status === 'DRT BLB Request Correction') {
+                        updates.isCorrectionRequired = true;
+                        updates.isCorrected = false;
+                    } else {
+                        updates.applicationStatusId = applicationStatusId;
+                        updates.isCorrectionRequired = null;
+                        updates.isCorrected = null;
+                    }
 
                     const updateOption = {
                         where: {
@@ -984,10 +995,12 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
 
 const getAllWhereCondition = (req, callback) => {
     const { query } = req;
-    const whereCondition = {};
+    let whereCondition = {
+        [Op.or]: [{ isCorrectionRequired: true }],
+    };
     async.waterfall([
         (cb) => {
-            const { claimType, claimValue } = query;
+            const { claimType, claimValue, formFor } = query;
             if (!claimType || !claimValue) {
                 return cb();
             }
@@ -1007,7 +1020,13 @@ const getAllWhereCondition = (req, callback) => {
                                 if (_.isEmpty(allowedFormStatus)) {
                                     return cb();
                                 }
-                                whereCondition.applicationStatusId = allowedFormStatus.allowedApplicationStatusIds;
+                                if (formFor && formFor === 'assigned') {
+                                    whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedAssignedApplicationStatusIds });
+                                } else if (formFor && formFor === 'unassigned') {
+                                    whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedUnAssignedApplicationStatusIds });
+                                } else {
+                                    whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedApplicationStatusIds });
+                                }
                                 cb();
                             })
                             .catch(() => {
@@ -1034,7 +1053,13 @@ const getAllWhereCondition = (req, callback) => {
                                 if (_.isEmpty(allowedFormStatus)) {
                                     return cb();
                                 }
-                                whereCondition.applicationStatusId = allowedFormStatus.allowedApplicationStatusIds;
+                                if (formFor && formFor === 'assigned') {
+                                    whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedAssignedApplicationStatusIds });
+                                } else if (formFor && formFor === 'unassigned') {
+                                    whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedUnAssignedApplicationStatusIds });
+                                } else {
+                                    whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedApplicationStatusIds });
+                                }
                                 cb();
                             })
                             .catch(() => {
@@ -1047,7 +1072,9 @@ const getAllWhereCondition = (req, callback) => {
             }
 
             if (claimType === 'applicant') {
-                whereCondition.applicantId = _.get(req, 'authentication.jwt.payload.sub', null);
+                whereCondition = {
+                    applicantId: _.get(req, 'authentication.jwt.payload.sub', null),
+                };
                 return cb();
             }
         },

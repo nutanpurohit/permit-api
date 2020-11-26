@@ -38,6 +38,8 @@ module.exports = (sequelize, DataTypes) => {
         issuedLicenseNo: { type: DataTypes.STRING(300) },
         applicationStatusId: { type: DataTypes.BIGINT.UNSIGNED },
         attachments: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+        isCorrectionRequired: { type: DataTypes.BOOLEAN },
+        isCorrected: { type: DataTypes.BOOLEAN },
     });
 
     BusinessLicenseApplication.sync();
