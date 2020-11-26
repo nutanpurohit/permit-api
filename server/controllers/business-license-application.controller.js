@@ -291,10 +291,25 @@ function globalSearch(req, res, next) {
     const whereCondition = getGlobalSearchWhereCondition(searchText);
     async.waterfall([
         (cb) => {
+            getAllWhereCondition(req, (err, queryParamWhereCondition) => {
+                if (err) {
+                    const e = new Error(queryValidationErr);
+                    e.status = httpStatus.BAD_REQUEST;
+                    return cb(e);
+                }
+                return cb(null, queryParamWhereCondition);
+            });
+        },
+        (queryParamWhereCondition, cb) => {
             async.parallel({
                 businessLicenseApplications: (done) => {
                     BusinessLicenseApplication.findAll({
-                        where: whereCondition,
+                        where: {
+                            [Op.and]: [
+                                queryParamWhereCondition,
+                                whereCondition,
+                            ],
+                        },
                         attributes: projection,
                         offset,
                         limit,
@@ -309,7 +324,10 @@ function globalSearch(req, res, next) {
                 },
                 total: (done) => {
                     BusinessLicenseApplication.count({
-                        where: whereCondition,
+                        [Op.and]: [
+                            queryParamWhereCondition,
+                            whereCondition,
+                        ],
                     })
                         .then((count) => {
                             return done(null, count);
