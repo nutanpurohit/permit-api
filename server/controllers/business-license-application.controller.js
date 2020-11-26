@@ -324,10 +324,12 @@ function globalSearch(req, res, next) {
                 },
                 total: (done) => {
                     BusinessLicenseApplication.count({
-                        [Op.and]: [
-                            queryParamWhereCondition,
-                            whereCondition,
-                        ],
+                        where: {
+                            [Op.and]: [
+                                queryParamWhereCondition,
+                                whereCondition,
+                            ],
+                        },
                     })
                         .then((count) => {
                             return done(null, count);
