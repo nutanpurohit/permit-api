@@ -13,6 +13,7 @@ import moralCharacterQuestionRoute from './moral-character-question.route';
 import moralCharacterAnswerRoute from './form-moral-character-question-answer.route';
 import userRoute from './user.route';
 import departReviewQuestionRoute from './department-review-question.route';
+import BLAgencyReviewRoute from './business-license-agency-review.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -60,5 +61,8 @@ router.use('/users', userRoute);
 
 // mount departmentReviewQuestion routes
 router.use('/department-review-question', departReviewQuestionRoute);
+
+// mount business-license-agency-review routes
+router.use('/business-license-agency-review', BLAgencyReviewRoute);
 
 export default router;

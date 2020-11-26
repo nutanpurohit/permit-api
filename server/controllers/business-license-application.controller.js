@@ -993,11 +993,15 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                         bulkCreateObj.push({
                             applicationFormId: applicationId,
                             departmentId: NAICSDepartmentRelationshipObj.departmentId,
+                            reviewStatus: 11,
                         });
                     }
                 });
             });
 
+            if (_.isEmpty(bulkCreateObj)) {
+                return cb();
+            }
             BusinessLicenseAgencyReview.bulkCreate(bulkCreateObj)
                 .then(() => {
                     cb();

@@ -15,7 +15,7 @@ router.route('/:id')
 
     /** GET /api/{version}/departmentType/:id - operations for specific departmentType */
     .get(departmentTypeCtrl.get)
-    
+
     /** DELETE /api/{version}/departmentType/id - delete department types */
     .delete(departmentTypeCtrl.deleteDepartment)
 

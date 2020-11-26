@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         applicationFormId: { type: DataTypes.BIGINT.UNSIGNED },
         departmentId: { type: DataTypes.BIGINT.UNSIGNED },
-        reviewStatus: { type: DataTypes.STRING },
+        reviewStatus: { type: DataTypes.BIGINT.UNSIGNED },
     });
 
     BusinessLicenseAgencyReview.sync();
