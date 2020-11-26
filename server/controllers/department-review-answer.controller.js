@@ -5,6 +5,10 @@ import db from '../../config/sequelize';
 
 const {
     DepartmentReviewAnswer,
+    DepartmentType,
+    DepartmentDivision,
+    AnswerType,
+    DepartmentReviewQuestion,
 } = db;
 
 function create(req, res, next) {
@@ -47,8 +51,91 @@ function create(req, res, next) {
     });
 }
 
+function getAll(req, res, next) {
+    const queryValidationErr = validateGetAllQuery(req.query, req.params);
+    if (queryValidationErr) {
+        const e = new Error(queryValidationErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+    const whereCondition = getAllWhereCondition(req.query, req.params);
+    const questionWhereCondition = getQuestionWhereCondition(req.query, req.params);
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                submittedAnswer: (done) => {
+                    DepartmentReviewAnswer.findAll({
+                        where: whereCondition,
+                        include: [
+                            { model: DepartmentDivision },
+                            { model: DepartmentType },
+                        ],
+                    })
+                        .then((records) => {
+                            done(null, records);
+                        })
+                        .catch(done);
+                },
+                total: (done) => {
+                    DepartmentReviewAnswer.count({
+                        where: whereCondition,
+                    })
+                        .then((count) => {
+                            return done(null, count);
+                        })
+                        .catch(done);
+                },
+                answers: (done) => {
+                    AnswerType.findAll({})
+                        .then((records) => {
+                            done(null, records);
+                        })
+                        .catch(done);
+                },
+                questions: (done) => {
+                    DepartmentReviewQuestion.findAll({
+                        where: questionWhereCondition,
+                        include: [
+                            { model: DepartmentDivision },
+                            { model: DepartmentType },
+                        ],
+                    })
+                        .then((records) => {
+                            done(null, records);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                const processingData = {
+                    submittedAnswer: parallelRes.submittedAnswer,
+                    total: parallelRes.total,
+                    answers: parallelRes.answers,
+                    questions: parallelRes.questions,
+                };
+
+                return cb(null, processingData);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+
+        const response = {
+            submittedAnswer: processingData.submittedAnswer,
+            total: processingData.total,
+            answers: processingData.answers,
+            questions: processingData.questions,
+        };
+        return res.json(response);
+    });
+}
+
 export default {
-    create,
+    create, getAll,
 };
 
 const validateDepartmentReviewQuestionPayload = (payload, callback) => {
@@ -82,7 +169,81 @@ const validateDepartmentReviewQuestionPayload = (payload, callback) => {
 
     return callback();
 };
-//
-// answers: [],
-//     submittedAnswers: [],
-//     question: []
+
+const validateGetAllQuery = (query, param) => {
+    const {
+        departmentId, departmentDivisionId,
+    } = query;
+    const {
+        applicationFormType, applicationFormId,
+    } = param;
+
+    if (_.isUndefined(applicationFormType)) {
+        return 'applicationFormType is missing';
+    }
+
+    if (_.isUndefined(applicationFormId)) {
+        return 'applicationFormId is missing';
+    }
+
+    if (!_.isUndefined(applicationFormId) && isNaN(applicationFormId)) {
+        return 'applicationFormId should be number value';
+    }
+
+    if (_.isUndefined(departmentId) && _.isUndefined(departmentDivisionId)) {
+        return 'departmentId and departmentDivisionId both are missing';
+    }
+
+    if (!_.isUndefined(departmentId) && isNaN(departmentId)) {
+        return 'departmentId should be number value';
+    }
+
+    if (!_.isUndefined(departmentDivisionId) && isNaN(departmentDivisionId)) {
+        return 'departmentDivisionId should be number value';
+    }
+
+    return null;
+};
+
+const getAllWhereCondition = (query, param) => {
+    const {
+        departmentId, departmentDivisionId,
+    } = query;
+    const {
+        applicationFormType, applicationFormId,
+    } = param;
+    const whereCondition = {};
+
+    if (applicationFormType) {
+        whereCondition.applicationFormType = applicationFormType;
+    }
+    if (applicationFormId) {
+        whereCondition.applicationFormId = applicationFormId;
+    }
+    if (departmentId) {
+        whereCondition.departmentId = departmentId;
+    } else if (departmentDivisionId) {
+        whereCondition.departmentDivisionId = departmentDivisionId;
+    }
+    return whereCondition;
+};
+
+const getQuestionWhereCondition = (query, param) => {
+    const {
+        departmentId, departmentDivisionId,
+    } = query;
+    const {
+        applicationFormType,
+    } = param;
+    const whereCondition = {};
+
+    if (applicationFormType) {
+        whereCondition.effectArea = applicationFormType;
+    }
+    if (departmentId) {
+        whereCondition.departmentId = departmentId;
+    } else if (departmentDivisionId) {
+        whereCondition.departmentDivisionId = departmentDivisionId;
+    }
+    return whereCondition;
+};

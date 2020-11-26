@@ -11,22 +11,6 @@ const {
 } = db;
 
 function getAll(req, res, next) {
-    const queryValidationErr = validateGetAllQuery(req.query);
-    if (queryValidationErr) {
-        const e = new Error(queryValidationErr);
-        e.status = httpStatus.BAD_REQUEST;
-        return next(e);
-    }
-
-    const {
-        limit = 1000,
-        start = 0,
-        sortColumn = 'assessmentCriteria',
-        sortBy = 'ASC',
-    } = req.query;
-
-    const offset = start;
-
     const whereCondition = getAllWhereCondition(req.query);
     async.waterfall([
         (cb) => {
@@ -34,11 +18,6 @@ function getAll(req, res, next) {
                 departmentReviewQuestions: (done) => {
                     DepartmentReviewQuestion.findAll({
                         where: whereCondition,
-                        offset,
-                        limit,
-                        order: [
-                            [sortColumn, sortBy.toUpperCase()],
-                        ],
                         include: [
                             { model: DepartmentType },
                             { model: DepartmentDivision },
@@ -185,46 +164,6 @@ export default {
     getAll, create, update, deleteDapartmentReviewQuestion,
 };
 
-const validateGetAllQuery = (query) => {
-    const {
-        limit, start, sortColumn, sortBy,
-    } = query;
-    const allowedSortingColumn = [
-        'id',
-        'name',
-        'createdAt',
-        'updatedAt',
-    ];
-
-    const allowedSortBy = ['asc', 'desc'];
-
-    if (!_.isUndefined(limit) && isNaN(limit)) {
-        return 'limit value should be integer';
-    }
-
-    if (!_.isUndefined(limit) && limit < 1) {
-        return 'limit value cannot be less than 1';
-    }
-
-    if (!_.isUndefined(start) && isNaN(start)) {
-        return 'start value should be integer';
-    }
-
-    if (!_.isUndefined(start) && start < 0) {
-        return 'start value cannot be less than 0';
-    }
-
-    if (!_.isUndefined(sortColumn) && !allowedSortingColumn.includes(sortColumn)) {
-        return 'The given sorting column is not supported';
-    }
-
-    if (!_.isUndefined(sortBy) && !allowedSortBy.includes(sortBy)) {
-        return 'The given sortBy value is not supported';
-    }
-
-    return null;
-};
-
 const getAllWhereCondition = (query) => {
     const whereCondition = {};
 
@@ -233,7 +172,8 @@ const getAllWhereCondition = (query) => {
     }
     if (query.departmentId) {
         whereCondition.departmentId = query.departmentId;
-    } else if (query.departmentDivisionId) {
+    }
+    if (query.departmentDivisionId) {
         whereCondition.departmentDivisionId = query.departmentDivisionId;
     }
     return whereCondition;
@@ -266,7 +206,6 @@ const validateDepartmentReviewQuestionPayload = (payload, callback) => {
     }
     return callback();
 };
-
 
 const getDepartmentReviewQuestion = (departmentId, callback) => {
     async.waterfall([

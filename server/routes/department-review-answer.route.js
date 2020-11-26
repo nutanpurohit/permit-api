@@ -4,7 +4,10 @@ import departmentReviewAnswerCtrl from '../controllers/department-review-answer.
 const router = express.Router();
 
 router.route('/')
-    /** GET /api/{version}/departmentReviewAnswer - create departmentReviewAnswer */
+    /** POST /api/{version}/departmentReviewAnswer - create/update departmentReviewAnswer */
     .post(departmentReviewAnswerCtrl.create);
+router.route('/:applicationFormType/:applicationFormId')
+    /** GET /api/{version}/departmentReviewAnswer - get departmentReviewAnswers */
+    .get(departmentReviewAnswerCtrl.getAll);
 
 export default router;
