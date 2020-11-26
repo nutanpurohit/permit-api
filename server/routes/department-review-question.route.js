@@ -5,10 +5,19 @@ const router = express.Router();
 
 router.route('/')
 
-    /** GET /api/{version}/departmentType - Return all department types */
+    /** GET /api/{version}/departmentReviewQuestion - Return all departmentReviewQuestion */
     .get(departmentReviewQuestionCtrl.getAll)
 
-    /** POST /api/{version}/ - create a new department types */
+    /** GET /api/{version}/departmentReviewQuestion - Create new departmentReviewQuestion */
     .post(departmentReviewQuestionCtrl.create);
+
+router.route('/:id')
+
+    /** GET /api/{version}/departmentReviewQuestion - Update departmentReviewQuestion */
+    .put(departmentReviewQuestionCtrl.update)
+
+    /** GET /api/{version}/departmentReviewQuestion - Delete departmentReviewQuestion */
+    .delete(departmentReviewQuestionCtrl.deleteDapartmentReviewQuestion);
+
 
 export default router;
