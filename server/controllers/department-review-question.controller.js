@@ -58,13 +58,13 @@ function getAll(req, res, next) {
                         })
                         .catch(done);
                 },
-                answers:(done)=>{
+                answers: (done) => {
                     AnswerType.findAll()
                         .then((count) => {
                             return done(null, count);
                         })
                         .catch(done);
-                }
+                },
             }, (parallelErr, parallelRes) => {
                 if (parallelErr) {
                     return cb(parallelErr);
@@ -72,7 +72,7 @@ function getAll(req, res, next) {
                 const processingData = {
                     departmentReviewQuestions: parallelRes.departmentReviewQuestions,
                     total: parallelRes.total,
-                    answers:parallelRes.answers,
+                    answers: parallelRes.answers,
                 };
 
                 return cb(null, processingData);
@@ -86,7 +86,7 @@ function getAll(req, res, next) {
         const response = {
             departmentReviewQuestions: processingData.departmentReviewQuestions,
             total: processingData.total,
-            answers:processingData.answers,
+            answers: processingData.answers,
         };
         return res.json(response);
     });
@@ -170,7 +170,11 @@ const getAllWhereCondition = (query) => {
     if (query.applicationFormType) {
         whereCondition.effectArea = query.applicationFormType;
     }
-
+    if (query.departmentId) {
+        whereCondition.departmentId = query.departmentId;
+    } else if (query.departmentDivisionId) {
+        whereCondition.departmentDivisionId = query.departmentDivisionId;
+    }
     return whereCondition;
 };
 

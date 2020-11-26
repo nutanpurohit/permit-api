@@ -21,7 +21,7 @@ module.exports = (sequelize, DataType) => {
     DepartmentReviewQuestion.sync();
     DepartmentReviewQuestion.registerModels = (db) => {
         const { DepartmentType, DepartmentDivision } = db;
-        
+
         DepartmentReviewQuestion.belongsTo(DepartmentType, { foreignKey: 'departmentId' });
         DepartmentReviewQuestion.belongsTo(DepartmentDivision, { foreignKey: 'departmentDivisionId' });
     };

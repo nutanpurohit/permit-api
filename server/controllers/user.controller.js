@@ -96,7 +96,7 @@ function getAll(req, res, next) {
                     userDepartment: (done) => {
                         DepartmentType.findOne({
                             where: claimWhere,
-                            raw:true,
+                            raw: true,
                         })
                             .then((record) => {
                                 return done(null, record);
@@ -115,7 +115,7 @@ function getAll(req, res, next) {
                     userDepartment: (done) => {
                         DepartmentDivision.findOne({
                             where: claimWhere,
-                            raw:true,
+                            raw: true,
                         })
                             .then((record) => {
                                 return done(null, record);
@@ -129,19 +129,21 @@ function getAll(req, res, next) {
                     processingData.userRecord.department = parallelRes.userDepartment;
                     cb(null, processingData);
                 });
+            } else {
+                cb(null, processingData);
             }
         },
-        (processingData,cb)=>{
+        (processingData, cb) => {
             const departmentId = _.get(processingData, 'userRecord.department.departmentId', null);
-             const departData= _.get(processingData, 'userRecord.department', null);
-            if(departmentId){
+            const departData = _.get(processingData, 'userRecord.department', null);
+            if (departmentId) {
                 async.parallel({
                     mainDepartment: (done) => {
                         DepartmentType.findOne({
                             where: {
-                                id:departmentId
+                                id: departmentId,
                             },
-                            raw:true,
+                            raw: true,
                         })
                             .then((record) => {
                                 return done(null, record);
@@ -154,18 +156,16 @@ function getAll(req, res, next) {
                     }
                     processingData.userRecord.department = {
                         ...parallelRes.mainDepartment,
-                        subDepartment:{
-                            ...departData
-                        }
-                    }
+                        subDepartment: {
+                            ...departData,
+                        },
+                    };
                     cb(null, processingData);
                 });
+            } else {
+                cb(null, processingData);
             }
-            else{
-                cb(null,processingData);
-            }
-            
-        }
+        },
     ], (err, processingData) => {
         if (err) {
             return next(err);
