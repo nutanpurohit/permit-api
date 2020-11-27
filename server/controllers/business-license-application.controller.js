@@ -1020,7 +1020,7 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
 const getAllWhereCondition = (req, callback) => {
     const { query } = req;
     let whereCondition = {
-        [Op.or]: [{ isCorrectionRequired: true }],
+        [Op.or]: [],
     };
     async.waterfall([
         (cb) => {
@@ -1043,6 +1043,12 @@ const getAllWhereCondition = (req, callback) => {
                             .then((allowedFormStatus) => {
                                 if (_.isEmpty(allowedFormStatus)) {
                                     return cb();
+                                }
+                                if (allowedFormStatus.allowedUnAssignedApplicationStatusIds) {
+                                    whereCondition[Op.or].push({
+                                        applicationStatusId: allowedFormStatus.allowedUnAssignedApplicationStatusIds,
+                                        isCorrectionRequired: true,
+                                    });
                                 }
                                 if (formFor && formFor === 'assigned') {
                                     whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedAssignedApplicationStatusIds });
@@ -1076,6 +1082,12 @@ const getAllWhereCondition = (req, callback) => {
                             .then((allowedFormStatus) => {
                                 if (_.isEmpty(allowedFormStatus)) {
                                     return cb();
+                                }
+                                if (allowedFormStatus.allowedUnAssignedApplicationStatusIds) {
+                                    whereCondition[Op.or].push({
+                                        applicationStatusId: allowedFormStatus.allowedUnAssignedApplicationStatusIds,
+                                        isCorrectionRequired: true,
+                                    });
                                 }
                                 if (formFor && formFor === 'assigned') {
                                     whereCondition[Op.or].push({ applicationStatusId: allowedFormStatus.allowedAssignedApplicationStatusIds });
