@@ -15,6 +15,7 @@ import userRoute from './user.route';
 import departReviewQuestionRoute from './department-review-question.route';
 import departmentReviewAnswer from './department-review-answer.route';
 import BLAgencyReviewRoute from './business-license-agency-review.route';
+import DocumentListRoute from './document-checklist.route';
 
 const router = express.Router(); // eslint-disable-line new-cap
 
@@ -68,5 +69,8 @@ router.use('/department-review-answer', departmentReviewAnswer);
 
 // mount business-license-agency-review routes
 router.use('/business-license-agency-review', BLAgencyReviewRoute);
+
+// mount document-list routes
+router.use('/document-checklist', DocumentListRoute);
 
 export default router;

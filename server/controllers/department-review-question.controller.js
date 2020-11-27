@@ -12,6 +12,7 @@ const {
 
 function getAll(req, res, next) {
     const whereCondition = getAllWhereCondition(req.query);
+    whereCondition.active = true;
     async.waterfall([
         (cb) => {
             async.parallel({
