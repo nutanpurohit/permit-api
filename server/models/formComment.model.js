@@ -17,6 +17,8 @@ module.exports = (sequelize, DataTypes) => {
         applicationFormType: { type: DataTypes.STRING },
         applicationStatus: { type: DataTypes.BIGINT.UNSIGNED },
         attachments: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
+        createdBy: { type: DataTypes.STRING },
+        readStatus: { type: DataTypes.BOOLEAN },
     });
 
     FormComment.sync();

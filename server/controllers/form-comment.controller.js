@@ -4,7 +4,8 @@ import * as _ from 'lodash';
 import db from '../../config/sequelize';
 
 const {
-    FormComment, FormCommentAttachment
+    FormComment,
+    FormCommentAttachment,
 } = db;
 
 
@@ -48,7 +49,7 @@ function getAll(req, res, next) {
         },
         (processingData, cb) => {
             processingData.completeData = [];
-            
+
             async.eachSeries(processingData.comments, (applicationObj, eachCb) => {
                 getSingleComment(applicationObj.id, (err, response) => {
                     if (err) {
@@ -71,7 +72,6 @@ function getAll(req, res, next) {
         const response = processingData.completeData;
         return res.json(response);
     });
-
 }
 
 function create(req, res, next) {
@@ -87,6 +87,7 @@ function create(req, res, next) {
     const payload = req.body;
     payload.formId = formId;
     payload.applicationFormType = formType;
+    payload.readStatus = false;
 
     async.waterfall([
         (cb) => {
@@ -112,8 +113,63 @@ function create(req, res, next) {
     });
 }
 
+function updateStatus(req, res, next) {
+    const {
+        id,
+    } = req.params;
+
+    const {
+        formType, formId,
+    } = req.body;
+
+    async.waterfall([
+        (cb) => {
+            validateCommentId(id, (commentErr) => {
+                if (commentErr) {
+                    const e = new Error(commentErr);
+                    e.status = httpStatus.BAD_REQUEST;
+                    return cb(e);
+                }
+                return cb(null);
+            });
+        },
+        (cb) => {
+            const formTypeErr = validateAllowedFormType(formType);
+            if (formTypeErr) {
+                const e = new Error(formTypeErr);
+                e.status = httpStatus.BAD_REQUEST;
+                return cb(e);
+            }
+            return cb(null);
+        },
+        (cb) => {
+            FormComment.update({
+                readStatus: true,
+            }, {
+                where: {
+                    id,
+                    formId,
+                    applicationFormType: formType,
+                },
+            }).then(() => {
+                return cb(null, 'Comment read status updated');
+            }).catch((error) => {
+                const e = new Error(error);
+                e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                return cb(e);
+            });
+        },
+    ], (waterfallErr, processingData) => {
+        if (waterfallErr) {
+            return next(waterfallErr);
+        }
+
+        return res.json(processingData);
+    });
+}
+
 export default {
-    getAll, create,
+    getAll, create, updateStatus,
 };
 
 const validateGetAllQuery = (query) => {
@@ -214,5 +270,18 @@ const getSingleComment = (commentId, callback) => {
         }
 
         return callback(null, processingData.commentForm);
+    });
+};
+
+const validateCommentId = (id, cb) => {
+    FormComment.findOne({
+        where: {
+            id,
+        },
+    }).then((commentData) => {
+        if (_.isEmpty(commentData)) {
+            return cb('Comment not found');
+        }
+        return cb(null);
     });
 };

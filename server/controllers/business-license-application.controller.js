@@ -618,7 +618,7 @@ const getCompleteLicenseApplicationForm = (applicationId, callback) => {
                     if (!_.isEmpty(formComments)) {
                         processingData.applicationForm.commentsSummary = {
                             allComments: formComments.length,
-                            unread: formComments.filter((comment) => !comment.isPublish).length,
+                            unread: formComments.filter((comment) => !comment.readStatus).length,
                         };
                     }
 
