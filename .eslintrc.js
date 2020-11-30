@@ -13,6 +13,7 @@ module.exports = {
         "no-use-before-define": [0],
         "no-restricted-globals": [0],
         "radix": [0],
+        "eqeqeq": [0],
     },
     "parserOptions": {
         "sourceType": "module",

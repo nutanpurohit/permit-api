@@ -476,7 +476,23 @@ const validateCreatePayload = (payload, callback) => {
 };
 
 const validateUpdatePayload = (formId, payload, callback) => {
+    let applicationForm;
     async.waterfall([
+        (cb) => {
+            BusinessLicenseApplication.findOne({
+                where: { id: formId },
+            })
+                .then((applicationFormRecord) => {
+                    if (_.isEmpty(applicationFormRecord)) {
+                        return cb('The given business license application form do not exist');
+                    }
+                    applicationForm = applicationFormRecord;
+                    cb();
+                })
+                .catch(() => {
+                    return cb('something went wrong while finding the business license application form');
+                });
+        },
         (cb) => {
             if (_.isEmpty(payload.clearanceTypeIds)) {
                 return cb();
@@ -511,7 +527,7 @@ const validateUpdatePayload = (formId, payload, callback) => {
         },
         (cb) => {
             if (!payload.applicationStatusId) {
-                return cb();
+                return cb(null, {});
             }
 
             ApplicationStatusType.findByPk(payload.applicationStatusId)
@@ -519,11 +535,40 @@ const validateUpdatePayload = (formId, payload, callback) => {
                     if (_.isEmpty(types)) {
                         return cb('The application status type value is incorrect');
                     }
-                    cb();
+                    cb(null, types);
                 })
                 .catch(() => {
                     return cb('something went wrong while checking application status type');
                 });
+        },
+        // if application status is Submitted we need to add the submittedOn date
+        (applicationStatusType, cb) => {
+            if (_.isEmpty(applicationStatusType) || applicationStatusType.name !== 'Submitted') {
+                return cb();
+            }
+
+            payload.submittedOn = new Date();
+            return cb();
+        },
+        // set the status change date if the past and current status is not same
+        // or user did some correction on the application form
+        (cb) => {
+            if (
+                payload.applicationStatusId
+                && applicationForm.applicationStatusId != payload.applicationStatusId
+            ) {
+                payload.statusChangeDate = new Date();
+                return cb();
+            }
+            if (
+                applicationForm.isCorrectionRequired
+                && payload.isCorrected
+            ) {
+                payload.statusChangeDate = new Date();
+                return cb();
+            }
+
+            return cb();
         },
     ], (waterfallErr) => {
         if (waterfallErr) {
@@ -910,11 +955,18 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
             async.parallel({
                 update_application: (done) => {
                     const updates = { };
+                    if (
+                        payload.applicationStatusId
+                        && processingData.applicationForm.applicationStatusId != payload.applicationStatusId
+                    ) {
+                        updates.statusChangeDate = new Date();
+                    }
                     // if the status is "DRT BLB Request Correction" we do not change the status of application
                     // instead we need to set the isCorrectionRequired property to true
                     const status = processingData.statusType.name;
                     if (status === 'DRT BLB Request Correction') {
                         updates.isCorrectionRequired = true;
+                        updates.statusChangeDate = new Date();
                         updates.isCorrected = false;
                     } else {
                         updates.applicationStatusId = applicationStatusId;
