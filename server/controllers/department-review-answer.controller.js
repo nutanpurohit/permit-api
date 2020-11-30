@@ -60,6 +60,7 @@ function getAll(req, res, next) {
     }
     const whereCondition = getAllWhereCondition(req.query, req.params);
     const questionWhereCondition = getQuestionWhereCondition(req.query, req.params);
+    questionWhereCondition.active = true;
     async.waterfall([
         (cb) => {
             async.parallel({
@@ -222,7 +223,8 @@ const getAllWhereCondition = (query, param) => {
     }
     if (departmentId) {
         whereCondition.departmentId = departmentId;
-    } else if (departmentDivisionId) {
+    }
+    if (departmentDivisionId) {
         whereCondition.departmentDivisionId = departmentDivisionId;
     }
     return whereCondition;
@@ -242,7 +244,8 @@ const getQuestionWhereCondition = (query, param) => {
     }
     if (departmentId) {
         whereCondition.departmentId = departmentId;
-    } else if (departmentDivisionId) {
+    }
+    if (departmentDivisionId) {
         whereCondition.departmentDivisionId = departmentDivisionId;
     }
     return whereCondition;

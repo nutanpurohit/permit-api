@@ -32,13 +32,13 @@ module.exports = (sequelize, DataTypes) => {
                 if (_.isEmpty(types)) {
                     DepartmentDivision.bulkCreate([
                         {
-                            name: 'DRT Collection', departmentId: 11, shortCode: '', claim: 'DRT-COLLECTION',
+                            name: 'DRT Collection', departmentId: 11, shortCode: 'COLLECTION', claim: 'DRT-COLLECTION',
                         },
                         {
-                            name: 'Real Property Tax', departmentId: 11, shortCode: '', claim: 'DRT-RPT',
+                            name: 'Real Property Tax', departmentId: 11, shortCode: 'RPT', claim: 'DRT-RPT',
                         },
                         {
-                            name: 'Business License Bureau', departmentId: 11, shortCode: '', claim: 'DRT-BLB',
+                            name: 'Business License Bureau', departmentId: 11, shortCode: 'BLB', claim: 'DRT-BLB',
                         },
                     ]);
                 }

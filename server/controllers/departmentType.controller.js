@@ -155,13 +155,7 @@ function updateDepartment(req, res, next) {
 
         async.waterfall([
             (cb) => {
-                const updateOption = {
-                    where: {
-                        id: departmentId,
-                    },
-                };
-                
-                DepartmentType.findOne({ where: { name: { [Op.like]: `%${payload.name}%` } } })
+                DepartmentType.findOne({ where: { name: payload.name } })
                     .then((duplicateRecord) => {
                         if (_.isEmpty(duplicateRecord)) {
                             return cb();
@@ -176,7 +170,6 @@ function updateDepartment(req, res, next) {
             (cb) => {
                 const updates = { ...payload };
                 delete updates.departmentId;
-        
                 const updateOption = {
                     where: {
                         id: departmentId,
@@ -185,11 +178,12 @@ function updateDepartment(req, res, next) {
 
                 DepartmentType.update(updates, updateOption)
                     .then(() => {
+                        // eslint-disable-next-line no-shadow
                         getDepartment(departmentId, (err, response) => {
                             if (err) {
                                 return next(err);
                             }
-                            return res.json(response);
+                            cb(response);
                         });
                     })
                     .catch(() => {
@@ -284,7 +278,7 @@ const getDepartment = (departmentId, callback) => {
         (cb) => {
             let departmentData = {};
             DepartmentType.findOne({
-                where: { id: departmentId }
+                where: { id: departmentId },
             })
                 .then((result) => {
                     if (_.isEmpty(result.dataValues)) {
@@ -302,13 +296,13 @@ const getDepartment = (departmentId, callback) => {
                     return cb(e);
                 });
         },
-        
+
     ], (waterfallErr, departmentData) => {
         if (waterfallErr) {
             return callback(waterfallErr);
         }
-         delete departmentData.id;
-         delete departmentData.name;
-         callback(null, departmentData);
+        delete departmentData.id;
+        delete departmentData.name;
+        callback(null, departmentData);
     });
 };
