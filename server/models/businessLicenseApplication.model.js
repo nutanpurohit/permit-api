@@ -40,6 +40,8 @@ module.exports = (sequelize, DataTypes) => {
         attachments: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
         isCorrectionRequired: { type: DataTypes.BOOLEAN },
         isCorrected: { type: DataTypes.BOOLEAN },
+        submittedOn: { type: DataTypes.DATEONLY },
+        statusChangeDate: { type: DataTypes.DATEONLY },
     });
 
     BusinessLicenseApplication.sync();
