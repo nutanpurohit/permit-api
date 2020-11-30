@@ -23,5 +23,9 @@ module.exports = (sequelize, DataTypes) => {
 
     FormComment.sync();
 
+    FormComment.registerModels = (db) => {
+        const { FormSubComment } = db;
+        FormComment.hasMany(FormSubComment, { foreignKey: 'parentCommentId' });
+    };
     return FormComment;
 };

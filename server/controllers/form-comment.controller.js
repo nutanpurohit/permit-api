@@ -6,6 +6,7 @@ import db from '../../config/sequelize';
 const {
     FormComment,
     FormCommentAttachment,
+    FormSubComment,
 } = db;
 
 
@@ -228,7 +229,9 @@ const getSingleComment = (commentId, callback) => {
             const processingData = {};
             FormComment.findOne({
                 where: { id: commentId },
-                raw: true,
+                include: [
+                    { model: FormSubComment },
+                ],
             })
                 .then((comment) => {
                     if (_.isEmpty(comment)) {
@@ -236,7 +239,7 @@ const getSingleComment = (commentId, callback) => {
                         e.status = httpStatus.NOT_FOUND;
                         return cb(e);
                     }
-                    processingData.commentForm = comment;
+                    processingData.commentForm = JSON.parse(JSON.stringify(comment));
                     cb(null, processingData);
                 })
                 .catch(() => {
