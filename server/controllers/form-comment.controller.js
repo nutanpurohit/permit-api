@@ -7,6 +7,7 @@ const {
     FormComment,
     FormCommentAttachment,
     FormSubComment,
+    Users,
 } = db;
 
 
@@ -230,7 +231,14 @@ const getSingleComment = (commentId, callback) => {
             FormComment.findOne({
                 where: { id: commentId },
                 include: [
-                    { model: FormSubComment },
+                    {
+                        model: FormSubComment,
+                        include: [{ model: Users }],
+                        order: [
+                            ['id', 'ASC'],
+                        ],
+                    },
+                    { model: Users },
                 ],
             })
                 .then((comment) => {
