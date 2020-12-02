@@ -20,12 +20,11 @@ router.route('/:id')
     .delete(naicsCodeCtrl.deleteNaics)
 
     /** PUT /api/{version}/naics-code/id - update NAICS */
-    .put(naicsCodeCtrl.updateNAICS)
+    .put(naicsCodeCtrl.updateNAICS);
 
 router.route('/status/:id')
     /** PUT /api/{version}/naics-code/id - update NAICS Status */
-    .put(naicsCodeCtrl.updateNAICSStatus); 
+    .put(naicsCodeCtrl.updateNAICSStatus);
 
-    
 
 export default router;
