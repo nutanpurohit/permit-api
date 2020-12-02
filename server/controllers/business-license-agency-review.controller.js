@@ -146,19 +146,33 @@ function updateAssignedAgencies(req, res, next) {
                 });
         },
         (assignedAgenciesRecords, cb) => {
-            console.log(assignedAgenciesRecords);
-            async.eachSeries(assignedAgencies, (agencyObj, eachCb) => {
-                const whereCondition = getSingleAgencyReviewWhereCondtion(agencyObj);
-                whereCondition.applicationFormId = formId;
-                assignedAgenciesRecords.find((data) => data.departmentId === agencyObj.id);
-                console.log('after find');
-                console.log(assignedAgenciesRecords);
-                eachCb();
+            async.eachLimit(assignedAgencies, 5, (agencyObj, eachCb) => {
+                const newArray = assignedAgenciesRecords.find((data) => {
+                    if (agencyObj.type === 'department') {
+                        return parseInt(agencyObj.id) === parseInt(data.departmentId);
+                    }
+                    if (agencyObj.type === 'departmentDivision') {
+                        return parseInt(agencyObj.id) === parseInt(data.departmentDivisionId);
+                    }
+                    return false;
+                });
+                if (!newArray) {
+                    console.log('create');
+                } else {
+                    console.log('update');
+                }
+                eachCb(assignedAgenciesRecords);
             }, (eachErr) => {
                 if (eachErr) {
                     return cb(eachErr);
                 }
-                return cb(null, { processingData: [] });
+                return cb(null, assignedAgenciesRecords);
+            });
+        },
+        (assignedAgenciesRecords, cb) => {
+            console.log('in delete assignedAgencie');
+            return cb(null, {
+                processingData: [],
             });
         },
     ], (err, processData) => {
@@ -209,22 +223,4 @@ const validateGetAllQuery = (query) => {
     }
 
     return null;
-};
-
-const getSingleAgencyReviewWhereCondtion = (data) => {
-    const {
-        id,
-        type,
-    } = data;
-
-    const whereCondition = {};
-
-    if (type === 'department') {
-        whereCondition.departmentId = id;
-    }
-    if (type === 'departmentDivision') {
-        whereCondition.departmentDivisionId = id;
-    }
-
-    return whereCondition;
 };
