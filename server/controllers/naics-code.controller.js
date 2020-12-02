@@ -31,7 +31,7 @@ function getAll(req, res, next) {
     const {
         limit = 10000,
         start = 0,
-        sortColumn = 'NAICSGroup',
+        sortColumn = 'title',
         sortBy = 'ASC',
     } = req.query;
     const offset = start;
@@ -51,10 +51,7 @@ function getAll(req, res, next) {
                         raw: true,
                     })
                         .then((types) => {
-                            const grouped = _.groupBy(types, (type) => {
-                                return type.NAICSGroup;
-                            });
-                            return done(null, grouped);
+                            return done(null, types);
                         })
                         .catch(done);
                 },
@@ -92,6 +89,7 @@ function getAll(req, res, next) {
     });
 }
 
+
 function create(req, res, next) {
     const payload = req.body;
 
@@ -102,20 +100,36 @@ function create(req, res, next) {
             return next(e);
         }
         payload.status = 'Active';
+        payload.code = parseInt(payload.codeText);
+        payload.codeLength = payload.codeText.length;
 
         async.waterfall([
             (cb) => {
-                NAICSType.findOne({ where: { code: payload.code } })
+                NAICSType.findOne({ where: { code: payload.codeText } })
                     .then((duplicateRecord) => {
                         if (_.isEmpty(duplicateRecord)) {
                             return cb();
                         }
 
-                        const e = new Error(`The NAICS code already exist for ${payload.code}`);
+                        const e = new Error(`The NAICS code already exist for ${payload.codeText}`);
                         e.status = httpStatus.BAD_REQUEST;
                         return cb(e);
                     })
                     .catch(cb);
+            },
+            (cb) => {
+                NAICSType.findOne({
+                    where: {
+                        code: payload.codeParent,
+                    },
+                }).then((parentNAICS) => {
+                    if (!_.isEmpty(parentNAICS)) {
+                        return cb();
+                    }
+                    const e = new Error('The Parent NAICS code is not found');
+                    e.status = httpStatus.BAD_REQUEST;
+                    return cb(e);
+                }).catch(cb);
             },
             (cb) => {
                 NAICSType.create(payload)
@@ -261,12 +275,12 @@ const validateGetAllQuery = (query) => {
     } = query;
     const allowedSortingColumn = [
         'id',
-        'sequenceNo',
-        'shortCode',
-        'NAICSGroup',
         'code',
+        'codeText',
+        'codeLength',
+        'codeParent',
         'title',
-        'year',
+        'description',
         'status',
         'createdAt',
         'updatedAt',
@@ -304,69 +318,27 @@ const validateGetAllQuery = (query) => {
 const getAllWhereCondition = (query) => {
     const whereCondition = {};
 
-    if (query.id) {
-        whereCondition.id = query.id;
+    if (query.codeParent) {
+        whereCondition.codeParent = query.codeParent;
     }
-    if (query.shortCode) {
-        whereCondition.shortCode = {
-            [Op.like]: `%${query.shortCode}%`,
-        };
+    if (query.codeLength) {
+        whereCondition.codeLength = query.codeLength;
     }
-    if (query.NAICSGroup) {
-        whereCondition.NAICSGroup = {
-            [Op.like]: `%${query.NAICSGroup}%`,
-        };
-    }
-    if (query.code) {
-        whereCondition.code = {
-            [Op.like]: `%${query.code}%`,
-        };
-    }
-    if (query.title) {
-        whereCondition.title = {
-            [Op.like]: `%${query.title}%`,
-        };
-    }
-    if (query.permitNo) {
-        whereCondition.permitNo = {
-            [Op.like]: `%${query.permitNo}%`,
-        };
-    }
-    if (query.status) {
-        whereCondition.status = {
-            [Op.like]: `%${query.status}%`,
-        };
-    }
-    if (query.year) {
-        whereCondition.year = query.year;
-    }
-
     return whereCondition;
 };
 
 const validateNaicsPayload = (payload, callback) => {
     const {
-        sequenceNo, shortCode,
-        NAICSGroup,
-        code,
+        codeText,
+        codeParent,
         title,
-        year,
     } = payload;
 
-    if (
-        !sequenceNo || _.isEmpty(shortCode)
-        || _.isEmpty(NAICSGroup) || _.isEmpty(code)
-        || _.isEmpty(title) || !year
+    if (_.isEmpty(codeText)
+        || _.isEmpty(codeParent)
+        || _.isEmpty(title)
     ) {
-        return callback('Either sequenceNo, shortCode, NAICSGroup, code, title or year is missing');
-    }
-
-    if (shortCode.length !== 2) {
-        return callback('short code should be only 2 characters');
-    }
-
-    if (code.length !== 4) {
-        return callback('code should be only 4 characters');
+        return callback('Either codeText, codeParent, title is missing');
     }
 
     return callback();
