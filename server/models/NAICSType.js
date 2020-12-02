@@ -13,12 +13,12 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             primaryKey: true,
         },
-        sequenceNo: { type: DataTypes.INTEGER },
-        shortCode: { type: DataTypes.STRING(4) },
-        NAICSGroup: { type: DataTypes.STRING },
-        code: { type: DataTypes.STRING(8) },
-        title: { type: DataTypes.STRING },
-        year: { type: DataTypes.INTEGER },
+        code: { type: DataTypes.INTEGER },
+        codeText: { type: DataTypes.STRING(20) },
+        codeLength: { type: DataTypes.INTEGER },
+        codeParent: { type: DataTypes.STRING(10) },
+        title: { type: DataTypes.TEXT },
+        description: { type: DataTypes.TEXT },
         status: { type: DataTypes.STRING(20) },
     });
 
