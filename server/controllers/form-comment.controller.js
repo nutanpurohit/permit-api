@@ -87,9 +87,11 @@ function create(req, res, next) {
     }
 
     const payload = req.body;
+    const userId = _.get(req, 'authentication.jwt.payload.sub', null);
     payload.formId = formId;
     payload.applicationFormType = formType;
     payload.readStatus = false;
+    payload.createdBy = userId;
 
     async.waterfall([
         (cb) => {
@@ -219,12 +221,19 @@ const getSingleComment = (commentId, callback) => {
                 include: [
                     {
                         model: FormSubComment,
-                        include: [{ model: Users }],
+                        include: [
+                            {
+                                model: Users,
+                                attributes: ['Id', 'FirstName', 'LastName', 'UserName'],
+                            }],
                         order: [
                             ['id', 'ASC'],
                         ],
                     },
-                    { model: Users },
+                    {
+                        model: Users,
+                        attributes: ['Id', 'FirstName', 'LastName', 'UserName'],
+                    },
                 ],
             })
                 .then((comment) => {
