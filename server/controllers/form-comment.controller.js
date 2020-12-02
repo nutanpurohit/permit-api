@@ -117,24 +117,11 @@ function create(req, res, next) {
 
 function updateStatus(req, res, next) {
     const {
-        id,
+        formType,
+        formId,
     } = req.params;
 
-    const {
-        formType, formId,
-    } = req.body;
-
     async.waterfall([
-        (cb) => {
-            validateCommentId(id, (commentErr) => {
-                if (commentErr) {
-                    const e = new Error(commentErr);
-                    e.status = httpStatus.BAD_REQUEST;
-                    return cb(e);
-                }
-                return cb(null);
-            });
-        },
         (cb) => {
             const formTypeErr = validateAllowedFormType(formType);
             if (formTypeErr) {
@@ -149,7 +136,6 @@ function updateStatus(req, res, next) {
                 readStatus: true,
             }, {
                 where: {
-                    id,
                     formId,
                     applicationFormType: formType,
                 },
@@ -281,18 +267,5 @@ const getSingleComment = (commentId, callback) => {
         }
 
         return callback(null, processingData.commentForm);
-    });
-};
-
-const validateCommentId = (id, cb) => {
-    FormComment.findOne({
-        where: {
-            id,
-        },
-    }).then((commentData) => {
-        if (_.isEmpty(commentData)) {
-            return cb('Comment not found');
-        }
-        return cb(null);
     });
 };
