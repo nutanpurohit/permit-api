@@ -135,8 +135,120 @@ function getAll(req, res, next) {
     });
 }
 
+function getAllDepartmentReviewAnswer(req, res, next) {
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                RPT: (done) => {
+                    DepartmentDivision.findOne({
+                        where: {
+                            shortCode: 'RPT',
+                        },
+                        attributes: ['id', 'departmentId'],
+                    }).then((DRTRecord) => {
+                        done(null, DRTRecord);
+                    }).catch(done);
+                },
+                DLM: (done) => {
+                    DepartmentType.findOne({
+                        where: {
+                            shortCode: 'DLM',
+                        },
+                        attributes: ['id'],
+                    }).then((DLMRecord) => {
+                        done(null, DLMRecord);
+                    }).catch(done);
+                },
+                COLLECTION: (done) => {
+                    DepartmentDivision.findOne({
+                        where: {
+                            shortCode: 'COLLECTION',
+                        },
+                        attributes: ['id', 'departmentId'],
+                    }).then((CollectionRecord) => {
+                        done(null, CollectionRecord);
+                    }).catch(done);
+                },
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                return cb(null, parallelRes);
+            });
+        },
+        (processingData, cb) => {
+            async.parallel({
+                RPTReviewObj: (done) => {
+                    const departmentDivisionId = _.get(processingData, 'RPT.id', null);
+                    const departmentId = _.get(processingData, 'RPT.departmentId', null);
+                    const RPTAnswerWhereCondition = getAllWhereCondition({
+                        departmentId, departmentDivisionId,
+                    }, req.params);
+                    const questionWhereCondition = getQuestionWhereCondition({
+                        departmentId, departmentDivisionId,
+                    }, req.params);
+
+                    getAnswerObject(RPTAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                        if (err) {
+                            done(err);
+                        }
+                        done(null, answerData);
+                    });
+                },
+                DLMReviewObj: (done) => {
+                    const departmentId = _.get(processingData, 'DLM.id', null);
+                    const DLMAnswerWhereCondition = getAllWhereCondition({
+                        departmentId,
+                    }, req.params);
+                    const questionWhereCondition = getQuestionWhereCondition({
+                        departmentId,
+                    }, req.params);
+                    getAnswerObject(DLMAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                        if (err) {
+                            done(err);
+                        }
+                        done(null, answerData);
+                    });
+                },
+                COLLECTIONReviewObj: (done) => {
+                    const departmentDivisionId = _.get(processingData, 'COLLECTION.id', null);
+                    const departmentId = _.get(processingData, 'COLLECTION.departmentId', null);
+                    const CollectionAnswerWhereCondition = getAllWhereCondition({
+                        departmentId, departmentDivisionId,
+                    }, req.params);
+                    const questionWhereCondition = getQuestionWhereCondition({
+                        departmentId, departmentDivisionId,
+                    }, req.params);
+                    getAnswerObject(CollectionAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                        if (err) {
+                            done(err);
+                        }
+                        done(null, answerData);
+                    });
+                },
+
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                return cb(null, parallelRes);
+            });
+        },
+    ], (parallelErr, procesingData) => {
+        if (parallelErr) {
+            return next(parallelErr);
+        }
+        const responseData = {
+            RPT: procesingData.RPTReviewObj,
+            DLM: procesingData.DLMReviewObj,
+            COLLECTION: procesingData.COLLECTIONReviewObj,
+        };
+        res.json(responseData);
+    });
+}
+
 export default {
-    create, getAll,
+    create, getAll, getAllDepartmentReviewAnswer,
 };
 
 const validateDepartmentReviewQuestionPayload = (payload, callback) => {
@@ -249,4 +361,54 @@ const getQuestionWhereCondition = (query, param) => {
         whereCondition.departmentDivisionId = departmentDivisionId;
     }
     return whereCondition;
+};
+
+const getAnswerObject = (answerWhereCondition, questionWhereCondition, cb) => {
+    async.parallel({
+        submittedAnswer: (subDone) => {
+            DepartmentReviewAnswer.findAll({
+                where: answerWhereCondition,
+                include: [
+                    { model: DepartmentDivision },
+                    { model: DepartmentType },
+                ],
+            })
+                .then((records) => {
+                    subDone(null, records);
+                })
+                .catch(subDone);
+        },
+        answers: (subDone) => {
+            AnswerType.findAll({})
+                .then((records) => {
+                    subDone(null, records);
+                })
+                .catch(subDone);
+        },
+        questions: (subDone) => {
+            DepartmentReviewQuestion.findAll({
+                where: questionWhereCondition,
+                include: [
+                    { model: DepartmentDivision },
+                    { model: DepartmentType },
+                ],
+            })
+                .then((records) => {
+                    subDone(null, records);
+                })
+                .catch(subDone);
+        },
+    }, (parallelErr, parallelRes) => {
+        if (parallelErr) {
+            cb(parallelErr);
+        }
+        const answerObject = {
+            submittedAnswer: parallelRes.submittedAnswer,
+            total: parallelRes.total,
+            answers: parallelRes.answers,
+            questions: parallelRes.questions,
+        };
+
+        cb(null, answerObject);
+    });
 };

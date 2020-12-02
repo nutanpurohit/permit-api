@@ -10,4 +10,8 @@ router.route('/:applicationFormType/:applicationFormId')
     /** GET /api/{version}/departmentReviewAnswer - get departmentReviewAnswers */
     .get(departmentReviewAnswerCtrl.getAll);
 
+router.route('/all/:applicationFormType/:applicationFormId')
+    /** GET /api/{version}/departmentReviewAnswer/all/:appliactionFormType/:appliactionFormId - get alldepartmentReviewAnswers */
+    .get(departmentReviewAnswerCtrl.getAllDepartmentReviewAnswer);
+
 export default router;
