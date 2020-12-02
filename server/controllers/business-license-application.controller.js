@@ -279,7 +279,7 @@ function globalSearch(req, res, next) {
     }
 
     const {
-        limit = 10,
+        limit = 100000,
         start = 0,
         sortColumn = 'id',
         sortBy = 'DESC',
@@ -768,7 +768,6 @@ const validateGetAllQuery = (query) => {
 const businessLicenseProjection = () => {
     const projection = [
         'id',
-        'clearanceTypeIds',
         'ssn',
         'ein',
         'cellPhoneNo',
