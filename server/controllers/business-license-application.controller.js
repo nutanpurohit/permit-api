@@ -1022,7 +1022,22 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                 include: [
                     {
                         model: NAICSType,
-                        include: [{ model: NAICSDepartmentRelationship }],
+                        attributes: ['id', 'code', 'codeText', 'codeLength', 'codeParent'],
+                        include: [{
+                            model: NAICSType,
+                            as: 'parentNAICS',
+                            attributes: ['id', 'code', 'codeText', 'codeLength', 'codeParent'],
+                            include: [{
+                                model: NAICSType,
+                                as: 'parentNAICS',
+                                attributes: ['id', 'code', 'codeText', 'codeLength', 'codeParent'],
+                                include: [{
+                                    model: NAICSType,
+                                    as: 'parentNAICS',
+                                    attributes: ['id', 'code', 'codeText', 'codeLength', 'codeParent'],
+                                }],
+                            }],
+                        }],
                     },
                 ],
             })
@@ -1034,20 +1049,46 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                     return cb(err);
                 });
         },
+        // find all the department linked to the NAICS id
+        (processingData, cb) => {
+            if (_.isEmpty(processingData.formNAICSRelationships)) {
+                return cb(null, processingData);
+            }
+            const naicsIds = [];
+            processingData.formNAICSRelationships.forEach((formNAICSRelationship) => {
+                const naicsId = _.get(formNAICSRelationship, 'NAICSType.parentNAICS.parentNAICS.parentNAICS.id', null);
+                if (naicsId && !naicsIds.includes(naicsId)) {
+                    naicsIds.push(naicsId);
+                }
+            });
+
+            processingData.naicsIds = naicsIds;
+            if (_.isEmpty(naicsIds)) {
+                return cb(null, processingData);
+            }
+
+            NAICSDepartmentRelationship.findAll({
+                where: { naicsId: naicsIds },
+            })
+                .then((naicsDepartmentRelationships) => {
+                    processingData.naicsDepartmentRelationships = naicsDepartmentRelationships;
+                    return cb(null, processingData);
+                })
+                .catch((err) => {
+                    return cb(err);
+                });
+        },
         (processingData, cb) => {
             const bulkCreateObj = [];
-            processingData.formNAICSRelationships.forEach((formNAICSRelationship) => {
-                const NAICSDepartmentRelationships = formNAICSRelationship.NAICSType ? formNAICSRelationship.NAICSType.NAICSDepartmentRelationships : [];
-                NAICSDepartmentRelationships.forEach((NAICSDepartmentRelationshipObj) => {
-                    const duplicateRecord = bulkCreateObj.find((createObj) => createObj.departmentId === NAICSDepartmentRelationshipObj.departmentId);
-                    if (!duplicateRecord) {
-                        bulkCreateObj.push({
-                            applicationFormId: applicationId,
-                            departmentId: NAICSDepartmentRelationshipObj.departmentId,
-                            reviewStatus: 11,
-                        });
-                    }
-                });
+            processingData.naicsDepartmentRelationships.forEach((NAICSDepartmentRelationshipObj) => {
+                const duplicateRecord = bulkCreateObj.find((createObj) => createObj.departmentId === NAICSDepartmentRelationshipObj.departmentId);
+                if (!duplicateRecord) {
+                    bulkCreateObj.push({
+                        applicationFormId: applicationId,
+                        departmentId: NAICSDepartmentRelationshipObj.departmentId,
+                        reviewStatus: 11,
+                    });
+                }
             });
 
             if (_.isEmpty(bulkCreateObj)) {

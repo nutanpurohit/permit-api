@@ -36,7 +36,16 @@ module.exports = (sequelize, DataTypes) => {
     NAICSType.registerModels = (db) => {
         const { NAICSDepartmentRelationship } = db;
 
-        NAICSType.hasMany(NAICSDepartmentRelationship, { foreignKey: 'naicsId' });
+        NAICSType.hasMany(NAICSDepartmentRelationship, {
+            as: 'NAICSDepRelationship',
+            foreignKey: 'naicsId',
+        });
+
+        NAICSType.hasOne(NAICSType, {
+            as: 'parentNAICS',
+            foreignKey: 'codeText',
+            sourceKey: 'codeParent',
+        });
     };
 
     return NAICSType;
