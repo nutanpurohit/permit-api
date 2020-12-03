@@ -1,7 +1,7 @@
 import async from 'async';
 import httpStatus from 'http-status';
 import * as _ from 'lodash';
-import Sequelize from 'sequelize';
+import Sequelize, { where } from 'sequelize';
 import db from '../../config/sequelize';
 
 const { Op } = Sequelize;
@@ -89,6 +89,33 @@ function getAll(req, res, next) {
     });
 }
 
+function getCodeOption(req, res, next) {
+    const {
+        code,
+    } = req.params;
+    async.waterfall([
+        (cb) => {
+            NAICSType.findOne({
+                where: { code },
+            }).then((codeResult) => {
+                const processingData = {
+                    codeSix: codeResult,
+                };
+                return cb(null, processingData);
+            }).catch((err) => {
+                return cb(err);
+            });
+        },
+        (cb, processingData) => {
+            return cb(null, processingData);
+        },
+    ], (err, processingData) => {
+        if (err) {
+            next(err);
+        }
+        res.json(processingData);
+    });
+}
 
 function create(req, res, next) {
     const payload = req.body;
@@ -266,7 +293,7 @@ function updateNAICSStatus(req, res, next) {
 }
 
 export default {
-    get, getAll, create, deleteNaics, updateNAICS, updateNAICSStatus,
+    get, getAll, create, deleteNaics, updateNAICS, updateNAICSStatus, getCodeOption,
 };
 
 const validateGetAllQuery = (query) => {
