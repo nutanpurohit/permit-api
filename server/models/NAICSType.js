@@ -45,6 +45,12 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: 'codeText',
             sourceKey: 'codeParent',
         });
+
+        NAICSType.hasMany(NAICSType, {
+            as: 'childNAICS',
+            foreignKey: 'codeParent',
+            sourceKey: 'codeText',
+        });
     };
 
     return NAICSType;

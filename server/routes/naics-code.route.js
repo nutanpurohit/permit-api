@@ -11,6 +11,11 @@ router.route('/')
     /** POST /api/{version}/naics-code - create a new NAICS codes */
     .post(naicsCodeCtrl.create);
 
+router.route('/admin-codes')
+
+    /** GET /api/{version}/naics-code/admin-codes - Return all NAICS codes for Admin purpose */
+    .get(naicsCodeCtrl.getAllForAdmin);
+
 router.route('/:id')
 
     /** GET /api/{version}/naics-code/:id - operations for specific NAICS */

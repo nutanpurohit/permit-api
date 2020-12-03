@@ -89,6 +89,53 @@ function getAll(req, res, next) {
     });
 }
 
+function getAllForAdmin(req, res, next) {
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                NAICSTypeRecords: (done) => {
+                    NAICSType.findAll({
+                        where: {
+                            codeLength: 2,
+                        },
+                        attributes: ['id', 'title', 'code', 'codeText', 'codeLength', 'codeParent'],
+                        include: [{
+                            model: NAICSType,
+                            as: 'childNAICS',
+                            attributes: ['id', 'title', 'code', 'codeText', 'codeLength', 'codeParent'],
+                        }],
+                        order: [
+                            ['title', 'ASC'],
+                        ],
+                    })
+                        .then((types) => {
+                            return done(null, types);
+                        })
+                        .catch(done);
+                },
+            }, (parallelErr, parallelRes) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                const processingData = {
+                    NAICSTypes: parallelRes.NAICSTypeRecords,
+                };
+
+                return cb(null, processingData);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+
+        const response = {
+            NAICSTypes: processingData.NAICSTypes,
+        };
+        return res.json(response);
+    });
+}
+
 function getCodeOption(req, res, next) {
     const {
         code,
@@ -294,7 +341,7 @@ function updateNAICSStatus(req, res, next) {
 }
 
 export default {
-    get, getAll, create, deleteNaics, updateNAICS, updateNAICSStatus, getCodeOption,
+    get, getAll, create, deleteNaics, updateNAICS, updateNAICSStatus, getCodeOption, getAllForAdmin,
 };
 
 const validateGetAllQuery = (query) => {
