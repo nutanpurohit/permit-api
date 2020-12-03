@@ -201,11 +201,12 @@ function getAllDepartmentReviewAnswer(req, res, next) {
             async.parallel({
                 RPTReviewObj: (done) => {
                     const departmentObj = {
-                        departmentId: _.get(processingData, 'RPT.id', null),
-                        departmentDivisionId: _.get(processingData, 'RPT.departmentId', null),
+                        departmentId: _.get(processingData, 'RPT.departmentId', null),
+                        departmentDivisionId: _.get(processingData, 'RPT.id', null),
                     };
                     const RPTAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
                     const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
+                    questionWhereCondition.active = true;
                     const commentWhereCondition = getCommentsWhereCondition(departmentObj, req.params);
                     getAnswerObject(RPTAnswerWhereCondition, questionWhereCondition, commentWhereCondition, (err, answerData) => {
                         if (err) {
@@ -220,6 +221,7 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                     };
                     const DLMAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
                     const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
+                    questionWhereCondition.active = true;
                     const commentWhereCondition = getCommentsWhereCondition(departmentObj, req.params);
                     getAnswerObject(DLMAnswerWhereCondition, questionWhereCondition, commentWhereCondition, (err, answerData) => {
                         if (err) {
@@ -230,11 +232,12 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                 },
                 COLLECTIONReviewObj: (done) => {
                     const departmentObj = {
-                        departmentId: _.get(processingData, 'COLLECTION.id', null),
-                        departmentDivisionId: _.get(processingData, 'COLLECTION.departmentId', null),
+                        departmentId: _.get(processingData, 'COLLECTION.departmentId', null),
+                        departmentDivisionId: _.get(processingData, 'COLLECTION.id', null),
                     };
                     const CollectionAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
                     const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
+                    questionWhereCondition.active = true;
                     const commentWhereCondition = getCommentsWhereCondition(departmentObj, req.params);
                     getAnswerObject(CollectionAnswerWhereCondition, questionWhereCondition, commentWhereCondition, (err, answerData) => {
                         if (err) {
