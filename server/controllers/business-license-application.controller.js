@@ -1079,6 +1079,10 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                 });
         },
         (processingData, cb) => {
+            if (_.isEmpty(processingData.naicsDepartmentRelationships)) {
+                return cb();
+            }
+
             const bulkCreateObj = [];
             processingData.naicsDepartmentRelationships.forEach((NAICSDepartmentRelationshipObj) => {
                 const duplicateRecord = bulkCreateObj.find((createObj) => createObj.departmentId === NAICSDepartmentRelationshipObj.departmentId);
@@ -1091,9 +1095,6 @@ const processChangeApplicationStatus = (applicationId, payload, callback) => {
                 }
             });
 
-            if (_.isEmpty(bulkCreateObj)) {
-                return cb();
-            }
             BusinessLicenseAgencyReview.bulkCreate(bulkCreateObj)
                 .then(() => {
                     cb();
