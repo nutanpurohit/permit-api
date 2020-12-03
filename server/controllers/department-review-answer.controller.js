@@ -10,6 +10,7 @@ const {
     AnswerType,
     DepartmentReviewQuestion,
     BusinessLicenseAgencyReview,
+    FormComment,
 } = db;
 
 function create(req, res, next) {
@@ -61,6 +62,7 @@ function getAll(req, res, next) {
     }
     const whereCondition = getAllWhereCondition(req.query, req.params);
     const questionWhereCondition = getQuestionWhereCondition(req.query, req.params);
+    const commentWhereCondition = getCommentsWhereCondition(req.query, req.params);
     questionWhereCondition.active = true;
     async.waterfall([
         (cb) => {
@@ -107,6 +109,13 @@ function getAll(req, res, next) {
                         })
                         .catch(done);
                 },
+                comments: (done) => {
+                    FormComment.findAll({
+                        where: commentWhereCondition,
+                    }).then((commentRecords) => {
+                        done(null, commentRecords);
+                    }).catch(done);
+                },
             }, (parallelErr, parallelRes) => {
                 if (parallelErr) {
                     return cb(parallelErr);
@@ -116,6 +125,7 @@ function getAll(req, res, next) {
                     total: parallelRes.total,
                     answers: parallelRes.answers,
                     questions: parallelRes.questions,
+                    comments: parallelRes.comments,
                 };
 
                 return cb(null, processingData);
@@ -131,6 +141,7 @@ function getAll(req, res, next) {
             total: processingData.total,
             answers: processingData.answers,
             questions: processingData.questions,
+            comments: processingData.comments,
         };
         return res.json(response);
     });
@@ -189,16 +200,14 @@ function getAllDepartmentReviewAnswer(req, res, next) {
         (processingData, cb) => {
             async.parallel({
                 RPTReviewObj: (done) => {
-                    const departmentDivisionId = _.get(processingData, 'RPT.id', null);
-                    const departmentId = _.get(processingData, 'RPT.departmentId', null);
-                    const RPTAnswerWhereCondition = getAllWhereCondition({
-                        departmentId, departmentDivisionId,
-                    }, req.params);
-                    const questionWhereCondition = getQuestionWhereCondition({
-                        departmentId, departmentDivisionId,
-                    }, req.params);
-
-                    getAnswerObject(RPTAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                    const departmentObj = {
+                        departmentId: _.get(processingData, 'RPT.id', null),
+                        departmentDivisionId: _.get(processingData, 'RPT.departmentId', null),
+                    };
+                    const RPTAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
+                    const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
+                    const commentWhereCondition = getCommentsWhereCondition(departmentObj, req.params);
+                    getAnswerObject(RPTAnswerWhereCondition, questionWhereCondition, commentWhereCondition, (err, answerData) => {
                         if (err) {
                             done(err);
                         }
@@ -206,14 +215,13 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                     });
                 },
                 DLMReviewObj: (done) => {
-                    const departmentId = _.get(processingData, 'DLM.id', null);
-                    const DLMAnswerWhereCondition = getAllWhereCondition({
-                        departmentId,
-                    }, req.params);
-                    const questionWhereCondition = getQuestionWhereCondition({
-                        departmentId,
-                    }, req.params);
-                    getAnswerObject(DLMAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                    const departmentObj = {
+                        departmentId: _.get(processingData, 'DLM.id', null),
+                    };
+                    const DLMAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
+                    const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
+                    const commentWhereCondition = getCommentsWhereCondition(departmentObj, req.params);
+                    getAnswerObject(DLMAnswerWhereCondition, questionWhereCondition, commentWhereCondition, (err, answerData) => {
                         if (err) {
                             done(err);
                         }
@@ -221,15 +229,14 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                     });
                 },
                 COLLECTIONReviewObj: (done) => {
-                    const departmentDivisionId = _.get(processingData, 'COLLECTION.id', null);
-                    const departmentId = _.get(processingData, 'COLLECTION.departmentId', null);
-                    const CollectionAnswerWhereCondition = getAllWhereCondition({
-                        departmentId, departmentDivisionId,
-                    }, req.params);
-                    const questionWhereCondition = getQuestionWhereCondition({
-                        departmentId, departmentDivisionId,
-                    }, req.params);
-                    getAnswerObject(CollectionAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                    const departmentObj = {
+                        departmentId: _.get(processingData, 'COLLECTION.id', null),
+                        departmentDivisionId: _.get(processingData, 'COLLECTION.departmentId', null),
+                    };
+                    const CollectionAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
+                    const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
+                    const commentWhereCondition = getCommentsWhereCondition(departmentObj, req.params);
+                    getAnswerObject(CollectionAnswerWhereCondition, questionWhereCondition, commentWhereCondition, (err, answerData) => {
                         if (err) {
                             done(err);
                         }
@@ -245,7 +252,8 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                         };
                         const agencyAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
                         const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
-                        getAnswerObject(agencyAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                        const commentWhereCondition = getCommentsWhereCondition(departmentObj, req.params);
+                        getAnswerObject(agencyAnswerWhereCondition, questionWhereCondition, commentWhereCondition, (err, answerData) => {
                             if (err) {
                                 eachCB(err);
                             }
@@ -396,7 +404,32 @@ const getQuestionWhereCondition = (query, param) => {
     return whereCondition;
 };
 
-const getAnswerObject = (answerWhereCondition, questionWhereCondition, cb) => {
+const getCommentsWhereCondition = (query, param) => {
+    const {
+        departmentId, departmentDivisionId,
+    } = query;
+    const {
+        applicationFormType, applicationFormId,
+    } = param;
+
+    const whereCondition = {};
+
+    if (applicationFormType) {
+        whereCondition.applicationFormType = applicationFormType;
+    }
+    if (applicationFormId) {
+        whereCondition.formId = applicationFormId;
+    }
+    if (departmentId) {
+        whereCondition.departmentId = departmentId;
+    }
+    if (departmentDivisionId) {
+        whereCondition.departmentDivisionId = departmentDivisionId;
+    }
+    return whereCondition;
+};
+
+const getAnswerObject = (answerWhereCondition, questionWhereCondition, commentWhereCondition, cb) => {
     async.parallel({
         submittedAnswer: (subDone) => {
             DepartmentReviewAnswer.findAll({
@@ -422,6 +455,13 @@ const getAnswerObject = (answerWhereCondition, questionWhereCondition, cb) => {
                     subDone(null, records);
                 })
                 .catch(subDone);
+        },
+        comments: (subDone) => {
+            FormComment.findAll({
+                where: commentWhereCondition,
+            }).then((records) => {
+                subDone(null, records);
+            }).catch(subDone);
         },
         department: (subDone) => {
             if (!answerWhereCondition.departmentId) {
@@ -457,6 +497,7 @@ const getAnswerObject = (answerWhereCondition, questionWhereCondition, cb) => {
             questions: parallelRes.questions,
             department: parallelRes.department,
             departmentDivision: parallelRes.departmentDivision,
+            comments: parallelRes.comments,
         };
 
         cb(null, answerObject);
