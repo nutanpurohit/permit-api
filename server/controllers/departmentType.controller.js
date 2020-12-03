@@ -126,7 +126,7 @@ function getAllDepartmentAndDepartmentDivision(req, res, next) {
         // eslint-disable-next-line array-callback-return
         processingData.departments.map((data) => {
             if (data.shortCode !== 'DRT' || data.shortCode !== 'BLB') {
-                const obj = { ...data, departmeId: data.id };
+                const obj = { ...data, departmentId: data.id };
                 allRecords.push(obj);
             }
         });
