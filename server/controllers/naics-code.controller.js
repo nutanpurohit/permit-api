@@ -100,6 +100,7 @@ function getCodeOption(req, res, next) {
             }).then((codeResult) => {
                 const processingData = {
                     codeSix: codeResult,
+                    codeParent: _.get(codeResult, 'codeParent', null),
                 };
                 return cb(null, processingData);
             }).catch((err) => {

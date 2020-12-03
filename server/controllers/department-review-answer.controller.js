@@ -9,6 +9,7 @@ const {
     DepartmentDivision,
     AnswerType,
     DepartmentReviewQuestion,
+    BusinessLicenseAgencyReview,
 } = db;
 
 function create(req, res, next) {
@@ -169,6 +170,15 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                         done(null, CollectionRecord);
                     }).catch(done);
                 },
+                AgencyRecords: (done) => {
+                    BusinessLicenseAgencyReview.findAll({
+                        where: {
+                            applicationFormId: req.params.applicationFormId,
+                        },
+                    }).then((agencyRecords) => {
+                        done(null, agencyRecords);
+                    }).catch(done);
+                },
             }, (parallelErr, parallelRes) => {
                 if (parallelErr) {
                     return cb(parallelErr);
@@ -226,7 +236,29 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                         done(null, answerData);
                     });
                 },
-
+                AGENCYReviewObj: (done) => {
+                    const AgencyReviewObjList = [];
+                    async.eachLimit(processingData.AgencyRecords, 5, (agencyObj, eachCB) => {
+                        const departmentObj = {
+                            departmentId: agencyObj.departmentId,
+                            departmentDivisionId: agencyObj.departmentDivisionId,
+                        };
+                        const agencyAnswerWhereCondition = getAllWhereCondition(departmentObj, req.params);
+                        const questionWhereCondition = getQuestionWhereCondition(departmentObj, req.params);
+                        getAnswerObject(agencyAnswerWhereCondition, questionWhereCondition, (err, answerData) => {
+                            if (err) {
+                                eachCB(err);
+                            }
+                            AgencyReviewObjList.push(answerData);
+                            eachCB();
+                        });
+                    }, (err) => {
+                        if (err) {
+                            done(err);
+                        }
+                        done(null, AgencyReviewObjList);
+                    });
+                },
             }, (parallelErr, parallelRes) => {
                 if (parallelErr) {
                     return cb(parallelErr);
@@ -242,6 +274,7 @@ function getAllDepartmentReviewAnswer(req, res, next) {
             RPT: procesingData.RPTReviewObj,
             DLM: procesingData.DLMReviewObj,
             COLLECTION: procesingData.COLLECTIONReviewObj,
+            AGENCYReview: procesingData.AGENCYReviewObj,
         };
         res.json(responseData);
     });
@@ -368,10 +401,6 @@ const getAnswerObject = (answerWhereCondition, questionWhereCondition, cb) => {
         submittedAnswer: (subDone) => {
             DepartmentReviewAnswer.findAll({
                 where: answerWhereCondition,
-                include: [
-                    { model: DepartmentDivision },
-                    { model: DepartmentType },
-                ],
             })
                 .then((records) => {
                     subDone(null, records);
@@ -388,15 +417,35 @@ const getAnswerObject = (answerWhereCondition, questionWhereCondition, cb) => {
         questions: (subDone) => {
             DepartmentReviewQuestion.findAll({
                 where: questionWhereCondition,
-                include: [
-                    { model: DepartmentDivision },
-                    { model: DepartmentType },
-                ],
             })
                 .then((records) => {
                     subDone(null, records);
                 })
                 .catch(subDone);
+        },
+        department: (subDone) => {
+            if (!answerWhereCondition.departmentId) {
+                return subDone(null, {});
+            }
+            DepartmentType.findOne({
+                where: {
+                    id: answerWhereCondition.departmentId,
+                },
+            }).then((departmentRecord) => {
+                subDone(null, departmentRecord);
+            }).catch(subDone);
+        },
+        departmentDivision: (subDone) => {
+            if (!answerWhereCondition.departmentDivisionId) {
+                return subDone(null, {});
+            }
+            DepartmentDivision.findOne({
+                where: {
+                    id: answerWhereCondition.departmentDivisionId,
+                },
+            }).then((departmentDivisionRecord) => {
+                subDone(null, departmentDivisionRecord);
+            }).catch(subDone);
         },
     }, (parallelErr, parallelRes) => {
         if (parallelErr) {
@@ -404,9 +453,10 @@ const getAnswerObject = (answerWhereCondition, questionWhereCondition, cb) => {
         }
         const answerObject = {
             submittedAnswer: parallelRes.submittedAnswer,
-            total: parallelRes.total,
             answers: parallelRes.answers,
             questions: parallelRes.questions,
+            department: parallelRes.department,
+            departmentDivision: parallelRes.departmentDivision,
         };
 
         cb(null, answerObject);
