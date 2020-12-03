@@ -37,7 +37,6 @@ module.exports = (sequelize, DataTypes) => {
         const { NAICSDepartmentRelationship } = db;
 
         NAICSType.hasMany(NAICSDepartmentRelationship, {
-            as: 'NAICSDepRelationship',
             foreignKey: 'naicsId',
         });
 
