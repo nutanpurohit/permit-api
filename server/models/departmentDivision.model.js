@@ -40,6 +40,18 @@ module.exports = (sequelize, DataTypes) => {
                         {
                             name: 'Business License Bureau', departmentId: 11, shortCode: 'BLB', claim: 'DRT-BLB',
                         },
+                        {
+                            name: 'DRT Insurance, Securities, Banking, and Real Estate Branch', departmentId: 11, shortCode: 'ISBRE Branch', claim: 'DRT-ISBRE',
+                        },
+                        {
+                            name: 'DRT Business Privilege Tax Branch', departmentId: 11, shortCode: 'BPTB', claim: 'DRT-BPTB',
+                        },
+                        {
+                            name: 'DRT Income Tax Assistance and Processing Branch', departmentId: 11, shortCode: 'Income Tax/W-1', claim: 'DRT-Tax',
+                        },
+                        {
+                            name: 'DRT Compliance Branch', departmentId: 11, shortCode: 'Compliance', claim: 'DRT-COMPLIANCE',
+                        },
                     ]);
                 }
             });

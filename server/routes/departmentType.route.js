@@ -22,4 +22,8 @@ router.route('/:id')
     /** PUT /api/{version}/departmentType/id - update department types */
     .put(departmentTypeCtrl.updateDepartment);
 
+router.route('/division/all')
+/** GET /api/{version}/departmentType/division/all - getAllDepartmentWithDepartmentDivision */
+    .get(departmentTypeCtrl.getAllDepartmentAndDepartmentDivision);
+
 export default router;

@@ -35,6 +35,7 @@ module.exports = (sequelize, DataTypes) => {
                         { name: 'Guam Police Department', shortCode: 'GPD', claim: 'Guam Police Department' },
                         { name: 'Dept of Revenue and Tax', shortCode: 'DRT', claim: 'Dept of Revenue and Tax' },
                         { name: 'Dept of Land Management', shortCode: 'DLM', claim: 'Dept of Land Management' },
+                        { name: 'Dept of Motor Vehicle', shortCode: 'DMV', claim: 'Dept of Motor Vehicle' },
                     ]);
                 }
             });

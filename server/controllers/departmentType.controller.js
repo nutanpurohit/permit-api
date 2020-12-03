@@ -8,6 +8,7 @@ const { Op } = Sequelize;
 
 const {
     DepartmentType,
+    DepartmentDivision,
 } = db;
 
 function get(req, res, next) {
@@ -90,6 +91,55 @@ function getAll(req, res, next) {
     });
 }
 
+function getAllDepartmentAndDepartmentDivision(req, res, next) {
+    async.waterfall([
+        (cb) => {
+            async.parallel({
+                departments: (done) => {
+                    DepartmentType.findAll({
+                        attributes: ['id', 'name', 'shortCode'],
+                        raw: true,
+                    }).then((allDepartments) => {
+                        done(null, allDepartments);
+                    }).catch(done);
+                },
+                departmentDivisions: (done) => {
+                    DepartmentDivision.findAll({
+                        attributes: ['id', 'name', 'departmentId', 'shortCode'],
+                        raw: true,
+                    }).then((allDepartmentDivisions) => {
+                        done(null, allDepartmentDivisions);
+                    }).catch(done);
+                },
+            }, (err, parallelRes) => {
+                if (err) {
+                    return cb(err);
+                }
+                return cb(null, parallelRes);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+        const allRecords = [];
+        // eslint-disable-next-line array-callback-return
+        processingData.departments.map((data) => {
+            if (data.shortCode !== 'DRT' || data.shortCode !== 'BLB') {
+                const obj = { ...data, departmeId: data.id };
+                allRecords.push(obj);
+            }
+        });
+        // eslint-disable-next-line array-callback-return
+        processingData.departmentDivisions.map((data) => {
+            const obj = { ...data, departmentDivisionId: data.id };
+            allRecords.push(obj);
+        });
+
+
+        return res.json({ departments: allRecords });
+    });
+}
 function create(req, res, next) {
     const payload = req.body;
 
@@ -202,7 +252,7 @@ function updateDepartment(req, res, next) {
 }
 
 export default {
-    get, getAll, create, deleteDepartment, updateDepartment,
+    get, getAll, create, deleteDepartment, updateDepartment, getAllDepartmentAndDepartmentDivision,
 };
 
 const validateGetAllQuery = (query) => {
