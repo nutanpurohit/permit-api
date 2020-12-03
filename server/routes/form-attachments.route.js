@@ -6,7 +6,10 @@ const router = express.Router();
 router.route('/:formType/:formId')
 
     /** POST /api/{version}/form-attachments/:formType/:formId - Create form attachments */
-    .post(formAttachmentsCtrl.create);
+    .post(formAttachmentsCtrl.create)
+
+    /** GET /api/{version}/form-attachments/:formType/:formId - Get all form attachments */
+    .get(formAttachmentsCtrl.getAllAttachments);
 
 router.route('/attachment/:attachmentId/:formType/:formId')
 

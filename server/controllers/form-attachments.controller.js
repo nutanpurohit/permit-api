@@ -199,8 +199,80 @@ function deleteAttachment(req, res, next) {
     });
 }
 
+function getAllAttachments(req, res, next) {
+    const { formId, formType } = req.params;
+    const formTypeErr = validateAllowedFormType(formType);
+
+    if (formTypeErr) {
+        const e = new Error(formTypeErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+
+    const {
+        limit = 100,
+        start = 0,
+        sortColumn = 'createdAt',
+        sortBy = 'ASC',
+    } = req.query;
+
+    const offset = start;
+
+    async.waterfall([
+        // find form details
+        (cb) => {
+            const processingData = { formAttachments: [] };
+            BusinessLicenseApplication.findOne({
+                where: { id: formId },
+                attribute: ['id', 'attachments'],
+                raw: true,
+            })
+                .then((applicationForm) => {
+                    if (_.isEmpty(applicationForm)) {
+                        const e = new Error('The business license application form with the given id do not exist');
+                        e.status = httpStatus.NOT_FOUND;
+                        return cb(e);
+                    }
+
+                    processingData.applicationForm = applicationForm;
+                    return cb(null, processingData);
+                })
+                .catch(() => {
+                    const e = new Error('Something went wrong while finding the business license application form details');
+                    e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                    return cb(e);
+                });
+        },
+        (processingData, cb) => {
+            const { attachments } = processingData.applicationForm;
+            if (_.isEmpty(attachments)) {
+                return cb(null, processingData);
+            }
+            FormAttachment.findAll({
+                where: { id: attachments, applicationFormType: 'businessLicense' },
+                offset,
+                limit,
+                order: [
+                    [sortColumn, sortBy.toUpperCase()],
+                ],
+            })
+                .then((formAttachments) => {
+                    processingData.formAttachments = formAttachments;
+                    cb(null, processingData);
+                })
+                .catch(next);
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+        const response = processingData.formAttachments;
+        return res.json(response);
+    });
+}
+
 export default {
-    create, deleteAttachment,
+    create, deleteAttachment, getAllAttachments,
 };
 
 const validateAllowedFormType = (formType) => {
