@@ -13,4 +13,11 @@ router.route('/department/:depId/applicationForm/:formId')
     /** PUT /api/{version}/business-license-agency-review/:id/change-status - update business license agency review status */
     .put(BLAgencyReviewRouteCtrl.updateStatus);
 
+router.route('/:formId/assigned-agencies')
+    /** GET /api/{version}/business-license-agency-review - Get the business license assigned agencies */
+    .get(BLAgencyReviewRouteCtrl.getAssignedAgencies)
+
+    /** PUT /api/{version}/business-license-agency-review - Update the business license assigned agencies */
+    .put(BLAgencyReviewRouteCtrl.updateAssignedAgencies);
+
 export default router;

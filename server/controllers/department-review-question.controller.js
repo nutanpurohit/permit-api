@@ -8,20 +8,34 @@ const {
     AnswerType,
     DepartmentType,
     DepartmentDivision,
+    FormComment,
 } = db;
 
 function getAll(req, res, next) {
     const whereCondition = getAllWhereCondition(req.query);
     whereCondition.active = true;
+    const commentCondition = getCommentWhereCondition(req.query);
+    const {
+        limit = 200,
+        start = 0,
+        sortColumn = 'id',
+        sortBy = 'ASC',
+    } = req.query;
+    const offset = start;
     async.waterfall([
         (cb) => {
             async.parallel({
                 departmentReviewQuestions: (done) => {
                     DepartmentReviewQuestion.findAll({
                         where: whereCondition,
+                        offset,
+                        limit,
                         include: [
                             { model: DepartmentType },
                             { model: DepartmentDivision },
+                        ],
+                        order: [
+                            [sortColumn, sortBy.toUpperCase()],
                         ],
                     })
                         .then((types) => {
@@ -45,6 +59,13 @@ function getAll(req, res, next) {
                         })
                         .catch(done);
                 },
+                additionalInformation: (done) => {
+                    FormComment.findAll({
+                        where: commentCondition,
+                    }).then((record) => {
+                        done(null, record);
+                    }).catch(done);
+                },
             }, (parallelErr, parallelRes) => {
                 if (parallelErr) {
                     return cb(parallelErr);
@@ -53,6 +74,7 @@ function getAll(req, res, next) {
                     departmentReviewQuestions: parallelRes.departmentReviewQuestions,
                     total: parallelRes.total,
                     answers: parallelRes.answers,
+                    additionalInformation: parallelRes.additionalInformation,
                 };
 
                 return cb(null, processingData);
@@ -67,6 +89,7 @@ function getAll(req, res, next) {
             departmentReviewQuestions: processingData.departmentReviewQuestions,
             total: processingData.total,
             answers: processingData.answers,
+            additionalInformation: processingData.additionalInformation,
         };
         return res.json(response);
     });
@@ -166,7 +189,33 @@ export default {
 };
 
 const getAllWhereCondition = (query) => {
+    const {
+        limit, start, sortColumn, sortBy,
+    } = query;
     const whereCondition = {};
+    const allowedSortingColumn = [
+        'id',
+        'createdAt',
+        'updatedAt',
+    ];
+
+    const allowedSortBy = ['asc', 'desc'];
+
+    if (!_.isUndefined(limit) && isNaN(limit)) {
+        return 'limit value should be integer';
+    }
+
+    if (!_.isUndefined(limit) && limit < 1) {
+        return 'limit value cannot be less than 1';
+    }
+
+    if (!_.isUndefined(start) && isNaN(start)) {
+        return 'start value should be integer';
+    }
+
+    if (!_.isUndefined(start) && start < 0) {
+        return 'start value cannot be less than 0';
+    }
 
     if (query.applicationFormType) {
         whereCondition.effectArea = query.applicationFormType;
@@ -176,6 +225,13 @@ const getAllWhereCondition = (query) => {
     }
     if (query.departmentDivisionId) {
         whereCondition.departmentDivisionId = query.departmentDivisionId;
+    }
+    if (!_.isUndefined(sortColumn) && !allowedSortingColumn.includes(sortColumn)) {
+        return 'The given sorting column is not supported';
+    }
+
+    if (!_.isUndefined(sortBy) && !allowedSortBy.includes(sortBy)) {
+        return 'The given sortBy value is not supported';
     }
     return whereCondition;
 };
@@ -240,4 +296,19 @@ const getDepartmentReviewQuestion = (departmentId, callback) => {
         delete departmentReviewQuestionData.id;
         return callback(null, departmentReviewQuestionData);
     });
+};
+
+
+const getCommentWhereCondition = (query) => {
+    const {
+        departmentId, departmentDivisionId,
+    } = query;
+    const whereCondition = {};
+    if (departmentId) {
+        whereCondition.departmentId = departmentId;
+    }
+    if (departmentDivisionId) {
+        whereCondition.departmentDivisionId = departmentDivisionId;
+    }
+    return whereCondition;
 };

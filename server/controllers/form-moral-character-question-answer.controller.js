@@ -190,10 +190,11 @@ function updateFormMoralCharacterQA(req, res, next) {
             });
         },
         (cb) => {
+            let countEx = 1;
             async.eachSeries(payload, (payloadObj, eachCb) => {
                 const updates = { ...payloadObj };
                 delete updates.id;
-        
+
                 const updateOption = {
                     where: {
                         id: payloadObj.id,
@@ -201,19 +202,24 @@ function updateFormMoralCharacterQA(req, res, next) {
                 };
                 FormMoralCharacterQuestionAnswer.update(updates, updateOption)
                     .then(() => {
-                        eachCb();
                     })
                     .catch(() => {
                         const e = new Error('An error occurred while updating the Answer');
                         e.status = httpStatus.INTERNAL_SERVER_ERROR;
                         return next(e);
                     });
-                cb();
+                if (payload.length == countEx) {
+                    cb();
+                } else {
+                    // eslint-disable-next-line no-plusplus
+                    countEx++;
+                    eachCb();
+                }
             }, (eachErr) => {
                 if (eachErr) {
                     return cb(eachErr);
                 }
-                return cb(null, processingData);
+                return cb();
             });
         },
     ], (waterfallErr) => {
@@ -225,7 +231,7 @@ function updateFormMoralCharacterQA(req, res, next) {
 }
 
 export default {
-    getAllAnswers, create, updateFormMoralCharacterQA
+    getAllAnswers, create, updateFormMoralCharacterQA,
 };
 
 const validateAllowedFormType = (formType) => {

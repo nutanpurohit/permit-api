@@ -11,10 +11,18 @@ module.exports = (sequelize, DataTypes) => {
         },
         applicationFormId: { type: DataTypes.BIGINT.UNSIGNED },
         departmentId: { type: DataTypes.BIGINT.UNSIGNED },
+        departmentDivisionId: { type: DataTypes.BIGINT.UNSIGNED },
         reviewStatus: { type: DataTypes.BIGINT.UNSIGNED },
     });
 
     BusinessLicenseAgencyReview.sync();
+
+    BusinessLicenseAgencyReview.registerModels = (db) => {
+        const { DepartmentType, DepartmentDivision } = db;
+
+        BusinessLicenseAgencyReview.belongsTo(DepartmentType, { foreignKey: 'departmentId' });
+        BusinessLicenseAgencyReview.belongsTo(DepartmentDivision, { foreignKey: 'departmentDivisionId' });
+    };
 
     return BusinessLicenseAgencyReview;
 };

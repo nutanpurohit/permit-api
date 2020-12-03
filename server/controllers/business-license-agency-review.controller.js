@@ -6,6 +6,8 @@ import db from '../../config/sequelize';
 const {
     BusinessLicenseAgencyReview,
     BusinessLicenseApplication,
+    DepartmentDivision,
+    DepartmentType,
 } = db;
 
 
@@ -89,6 +91,136 @@ function updateStatus(req, res, next) {
     });
 }
 
+function getAssignedAgencies(req, res, next) {
+    const queryValidationErr = validateGetAllQuery(req.query);
+    if (queryValidationErr) {
+        const e = new Error(queryValidationErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+    const { formId } = req.params;
+    const {
+        limit = 200,
+        start = 0,
+        sortColumn = 'id',
+        sortBy = 'ASC',
+    } = req.query;
+    const offset = start;
+    const whereCondtion = {
+        applicationFormId: formId,
+    };
+    BusinessLicenseAgencyReview.findAll({
+        where: whereCondtion,
+        offset,
+        limit,
+        order: [
+            [sortColumn, sortBy.toUpperCase()],
+        ],
+        include: [
+            { model: DepartmentDivision },
+            { model: DepartmentType },
+        ],
+    }).then((response) => {
+        return res.json(response);
+    }).catch((err) => {
+        return next(err);
+    });
+}
+
+function updateAssignedAgencies(req, res, next) {
+    const { formId } = req.params;
+    const { assignedAgencies } = req.body;
+    const assignedAgencyWhereCondition = {
+        applicationFormId: formId,
+    };
+    async.waterfall([
+        (cb) => {
+            BusinessLicenseAgencyReview.findAll({
+                where: assignedAgencyWhereCondition,
+            })
+                .then((records) => {
+                    return cb(null, records);
+                })
+                .catch((err) => {
+                    return cb(err);
+                });
+        },
+        (assignedAgenciesRecords, cb) => {
+            async.eachLimit(assignedAgencies, 5, (agencyObj, eachCb) => {
+                const newArray = assignedAgenciesRecords.find((data) => {
+                    if (agencyObj.type === 'department') {
+                        return parseInt(agencyObj.id) === parseInt(data.departmentId);
+                    }
+                    if (agencyObj.type === 'departmentDivision') {
+                        return parseInt(agencyObj.id) === parseInt(data.departmentDivisionId);
+                    }
+                    return false;
+                });
+                if (!newArray) {
+                    console.log('create');
+                } else {
+                    console.log('update');
+                }
+                eachCb(assignedAgenciesRecords);
+            }, (eachErr) => {
+                if (eachErr) {
+                    return cb(eachErr);
+                }
+                return cb(null, assignedAgenciesRecords);
+            });
+        },
+        (assignedAgenciesRecords, cb) => {
+            console.log('in delete assignedAgencie');
+            return cb(null, {
+                processingData: [],
+            });
+        },
+    ], (err, processData) => {
+        if (err) {
+            return next(err);
+        }
+        return res.json(processData);
+    });
+}
+
 export default {
-    getSingle, updateStatus,
+    getSingle, updateStatus, getAssignedAgencies, updateAssignedAgencies,
+};
+
+const validateGetAllQuery = (query) => {
+    const {
+        limit, start, sortColumn, sortBy,
+    } = query;
+    const allowedSortingColumn = [
+        'id',
+        'createdAt',
+        'updatedAt',
+    ];
+    const allowedSortBy = ['asc', 'desc'];
+
+    if (!_.isUndefined(limit) && isNaN(limit)) {
+        return 'limit value should be integer';
+    }
+
+    if (!_.isUndefined(limit) && limit < 1) {
+        return 'limit value cannot be less than 1';
+    }
+
+    if (!_.isUndefined(start) && isNaN(start)) {
+        return 'start value should be integer';
+    }
+
+    if (!_.isUndefined(start) && start < 0) {
+        return 'start value cannot be less than 0';
+    }
+
+    if (!_.isUndefined(sortColumn) && !allowedSortingColumn.includes(sortColumn)) {
+        return 'The given sorting column is not supported';
+    }
+
+    if (!_.isUndefined(sortBy) && !allowedSortBy.includes(sortBy)) {
+        return 'The given sortBy value is not supported';
+    }
+
+    return null;
 };

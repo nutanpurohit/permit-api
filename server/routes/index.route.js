@@ -13,7 +13,7 @@ import moralCharacterQuestionRoute from './moral-character-question.route';
 import moralCharacterAnswerRoute from './form-moral-character-question-answer.route';
 import userRoute from './user.route';
 import departReviewQuestionRoute from './department-review-question.route';
-import departmentReviewAnswer from './department-review-answer.route';
+import departmentReviewAnswerRoute from './department-review-answer.route';
 import BLAgencyReviewRoute from './business-license-agency-review.route';
 import DocumentListRoute from './document-checklist.route';
 import FormSubCommentRoute from './form-sub-comment.route';
@@ -66,7 +66,7 @@ router.use('/users', userRoute);
 router.use('/department-review-question', departReviewQuestionRoute);
 
 // mount departmentReviewAnswer routes
-router.use('/department-review-answer', departmentReviewAnswer);
+router.use('/department-review-answer', departmentReviewAnswerRoute);
 
 // mount business-license-agency-review routes
 router.use('/business-license-agency-review', BLAgencyReviewRoute);

@@ -19,13 +19,16 @@ module.exports = (sequelize, DataTypes) => {
         attachments: { type: DataTypes.ARRAY(DataTypes.BIGINT.UNSIGNED) },
         createdBy: { type: DataTypes.STRING },
         readStatus: { type: DataTypes.BOOLEAN },
+        departmentId: { type: DataTypes.BIGINT.UNSIGNED },
+        departmentDivisionId: { type: DataTypes.BIGINT.UNSIGNED },
     });
 
     FormComment.sync();
 
     FormComment.registerModels = (db) => {
-        const { FormSubComment } = db;
+        const { FormSubComment, Users } = db;
         FormComment.hasMany(FormSubComment, { foreignKey: 'parentCommentId' });
+        FormComment.belongsTo(Users, { foreignKey: 'createdBy' });
     };
     return FormComment;
 };

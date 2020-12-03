@@ -7,6 +7,7 @@ const {
     FormComment,
     FormCommentAttachment,
     FormSubComment,
+    Users,
 } = db;
 
 
@@ -86,9 +87,11 @@ function create(req, res, next) {
     }
 
     const payload = req.body;
+    const userId = _.get(req, 'authentication.jwt.payload.sub', null);
     payload.formId = formId;
     payload.applicationFormType = formType;
     payload.readStatus = false;
+    payload.createdBy = userId;
 
     async.waterfall([
         (cb) => {
@@ -116,24 +119,11 @@ function create(req, res, next) {
 
 function updateStatus(req, res, next) {
     const {
-        id,
+        formType,
+        formId,
     } = req.params;
 
-    const {
-        formType, formId,
-    } = req.body;
-
     async.waterfall([
-        (cb) => {
-            validateCommentId(id, (commentErr) => {
-                if (commentErr) {
-                    const e = new Error(commentErr);
-                    e.status = httpStatus.BAD_REQUEST;
-                    return cb(e);
-                }
-                return cb(null);
-            });
-        },
         (cb) => {
             const formTypeErr = validateAllowedFormType(formType);
             if (formTypeErr) {
@@ -148,7 +138,6 @@ function updateStatus(req, res, next) {
                 readStatus: true,
             }, {
                 where: {
-                    id,
                     formId,
                     applicationFormType: formType,
                 },
@@ -230,7 +219,21 @@ const getSingleComment = (commentId, callback) => {
             FormComment.findOne({
                 where: { id: commentId },
                 include: [
-                    { model: FormSubComment },
+                    {
+                        model: FormSubComment,
+                        include: [
+                            {
+                                model: Users,
+                                attributes: ['Id', 'FirstName', 'LastName', 'UserName'],
+                            }],
+                        order: [
+                            ['id', 'ASC'],
+                        ],
+                    },
+                    {
+                        model: Users,
+                        attributes: ['Id', 'FirstName', 'LastName', 'UserName'],
+                    },
                 ],
             })
                 .then((comment) => {
@@ -273,18 +276,5 @@ const getSingleComment = (commentId, callback) => {
         }
 
         return callback(null, processingData.commentForm);
-    });
-};
-
-const validateCommentId = (id, cb) => {
-    FormComment.findOne({
-        where: {
-            id,
-        },
-    }).then((commentData) => {
-        if (_.isEmpty(commentData)) {
-            return cb('Comment not found');
-        }
-        return cb(null);
     });
 };
