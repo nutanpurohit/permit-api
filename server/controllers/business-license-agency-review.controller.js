@@ -7,6 +7,7 @@ import departmentReviewAnswerCtrl from './department-review-answer.controller';
 const {
     BusinessLicenseAgencyReview,
     BusinessLicenseApplication,
+    ApplicationStatusType,
 } = db;
 
 
@@ -17,6 +18,9 @@ function getSingle(req, res, next) {
         (cb) => {
             BusinessLicenseAgencyReview.findOne({
                 where: { applicationFormId: formId, departmentId: depId },
+                include: [
+                    { model: ApplicationStatusType, attributes: ['id', 'name'] },
+                ],
             })
                 .then((record) => {
                     const processingData = { record };
