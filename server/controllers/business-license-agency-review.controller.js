@@ -178,6 +178,14 @@ function updateAssignedAgencies(req, res, next) {
     });
 }
 
+function addAgency(req, res, next){
+
+}
+
+function deleteAgency(req, res, next){
+
+}
+
 export default {
     getSingle, updateStatus, getAssignedAgencies, updateAssignedAgencies,
 };

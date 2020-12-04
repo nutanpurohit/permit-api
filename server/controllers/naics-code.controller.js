@@ -146,10 +146,11 @@ function getCodeOption(req, res, next) {
             NAICSType.findOne({
                 where: {
                     id: codeId,
+                    codeLength: 6,
                 },
             }).then((response) => {
                 if (_.isEmpty(response)) {
-                    const e = new Error('The NAICS with the given id do not exist');
+                    const e = new Error('The NAICS with the given id do not exist for code 6');
                     e.status = httpStatus.NOT_FOUND;
                     return next(e);
                 }
