@@ -1,7 +1,7 @@
 import async from 'async';
 import httpStatus from 'http-status';
 import * as _ from 'lodash';
-import Sequelize from 'sequelize';
+import Sequelize, { Error } from 'sequelize';
 import db from '../../config/sequelize';
 
 const { Op } = Sequelize;
@@ -142,6 +142,22 @@ function getCodeOption(req, res, next) {
     } = req.params;
     const projectArray = ['id', 'code', 'codeParent', 'title'];
     async.waterfall([
+        (cb) => {
+            NAICSType.findOne({
+                where: {
+                    id: codeId,
+                },
+            }).then((response) => {
+                if (_.isEmpty(response)) {
+                    const e = new Error('The NAICS with the given id do not exist');
+                    e.status = httpStatus.NOT_FOUND;
+                    return next(e);
+                }
+                return cb();
+            }).catch((err) => {
+                return cb(err);
+            });
+        },
         (cb) => {
             NAICSType.findOne({
                 where: { id: codeId },
