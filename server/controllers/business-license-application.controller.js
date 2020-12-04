@@ -244,21 +244,79 @@ function updateApplicationForm(req, res, next) {
             },
         };
 
-        BusinessLicenseApplication.update(updates, updateOption)
-            .then(() => {
-                getCompleteLicenseApplicationForm(applicationFormId, (err, response) => {
-                    if (err) {
-                        return next(err);
-                    }
+        async.waterfall([
+            (cb) => {
+                if (_.isEmpty(payload.naicsIds)) {
+                    return cb();
+                }
+                FormNAICSRelationship.findAll({
+                    where: { applicationFormId, applicationFormType: 'businessLicense' },
+                })
+                    .then((formNAICSRelationships) => {
+                        // if there was no any NAICS for this form then simply save that in next step
+                        if (_.isEmpty(formNAICSRelationships)) {
+                            return cb();
+                        }
 
-                    return res.json(response.applicationForm);
-                });
-            })
-            .catch(() => {
-                const e = new Error('An error occurred while updating the business license application form');
-                e.status = httpStatus.INTERNAL_SERVER_ERROR;
-                return next(e);
-            });
+                        // if the previous and current NAICS is same just ignore it
+                        if (formNAICSRelationships[0].naicsId == payload.naicsIds[0]) {
+                            return cb();
+                        }
+
+                        async.parallel({
+                            deleteExistingNAICS: (done) => {
+                                FormNAICSRelationship.destroy({
+                                    where: { applicationFormId, applicationFormType: 'businessLicense', naicsId: formNAICSRelationships[0].naicsId },
+                                })
+                                    .then(() => {
+                                        done();
+                                    })
+                                    .catch(done);
+                            },
+                            addNewNAICS: (done) => {
+                                FormNAICSRelationship.create({
+                                    naicsId: payload.naicsIds[0],
+                                    applicationFormId,
+                                    applicationFormType: 'businessLicense',
+                                })
+                                    .then(() => {
+                                        done();
+                                    })
+                                    .catch(done);
+                            },
+                        }, (parallelErr) => {
+                            if (parallelErr) {
+                                return cb(parallelErr);
+                            }
+                            return cb();
+                        });
+                    })
+                    .catch(cb);
+            },
+            (cb) => {
+                BusinessLicenseApplication.update(updates, updateOption)
+                    .then(() => {
+                        getCompleteLicenseApplicationForm(applicationFormId, (err, response) => {
+                            if (err) {
+                                return cb(err);
+                            }
+
+                            return cb(null, response);
+                        });
+                    })
+                    .catch(() => {
+                        const e = new Error('An error occurred while updating the business license application form');
+                        e.status = httpStatus.INTERNAL_SERVER_ERROR;
+                        return cb(e);
+                    });
+            },
+        ], (err, response) => {
+            if (err) {
+                return next(err);
+            }
+
+            return res.json(response.applicationForm);
+        });
     });
 }
 
