@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
                             name: 'DRT Business Privilege Tax Branch', departmentId: 11, shortCode: 'BPTB', claim: 'DRT-BPTB',
                         },
                         {
-                            name: 'DRT Income Tax Assistance and Processing Branch', departmentId: 11, shortCode: 'Income Tax/W-1', claim: 'DRT-Tax',
+                            name: 'DRT Income Tax Assistance and Processing Branch', departmentId: 11, shortCode: 'ITAPB', claim: 'DRT-ITAPB',
                         },
                         {
                             name: 'DRT Compliance Branch', departmentId: 11, shortCode: 'Compliance', claim: 'DRT-COMPLIANCE',
