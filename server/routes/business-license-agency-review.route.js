@@ -23,6 +23,6 @@ router.route('/add')
 
 router.route('/delete')
     /** DELETE /api/{version}/business-license-agency-review/delete/department/:departmentId/applicationForm/:applicationFormId/:departmentDivisionId - delete business license agency review */
-    .delete(BLAgencyReviewRouteCtrl.deleteAgency);
+    .put(BLAgencyReviewRouteCtrl.deleteAgency);
 
 export default router;
