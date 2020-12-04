@@ -134,7 +134,7 @@ function deleteAgency(req, res, next) {
     const deleteWhereCondition = getDeleteWhereCondition(req.body);
     async.waterfall([
         (cb) => {
-            BusinessLicenseAgencyReview.destroy({ where: { deleteWhereCondition } }).then(() => {
+            BusinessLicenseAgencyReview.destroy({ where: deleteWhereCondition }).then(() => {
                 return cb();
             }).catch(cb);
         },
@@ -179,7 +179,7 @@ const getDeleteWhereCondition = (params) => {
         whereCondition.applicationFormId = applicationFormId;
     }
     if (departmentDivisionId) {
-        whereCondition.applicationFormId = departmentDivisionId;
+        whereCondition.departmentDivisionId = departmentDivisionId;
     }
     return whereCondition;
 };
