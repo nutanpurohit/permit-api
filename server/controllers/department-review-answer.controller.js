@@ -388,26 +388,45 @@ const getAllBusinessLicenseAgencies = (applicationFormId, callback) => {
                 }
             });
 
-            // find the department divisions that are responsible for this review
+            // find the department/department divisions that are responsible for this review
             BusinessLicenseAgencyReview.findAll({
                 where: {
                     applicationFormId,
-                    departmentDivisionId: {
-                        [Op.ne]: null,
-                    },
                 },
             }).then((businessLicenseAgencyReviews) => {
-                if (!_.isEmpty(businessLicenseAgencyReviews)) {
-                    businessLicenseAgencyReviews.forEach((businessLicenseAgencyReviewObj) => {
-                        const duplicateRecord = agencyRecordArr.find((existObj) => existObj.departmentDivisionId === businessLicenseAgencyReviewObj.departmentDivisionId);
-                        if (!duplicateRecord) {
-                            agencyRecordArr.push({
-                                departmentId: businessLicenseAgencyReviewObj.departmentId,
-                                departmentDivisionId: businessLicenseAgencyReviewObj.departmentDivisionId,
-                            });
-                        }
-                    });
+                if (_.isEmpty(businessLicenseAgencyReviews)) {
+                    return cb(null, agencyRecordArr);
                 }
+                // for departments
+                const departmentsOnly = businessLicenseAgencyReviews.filter((obj) => obj.departmentId && !obj.departmentDivisionId);
+                departmentsOnly.forEach((businessLicenseAgencyReviewObj) => {
+                    const duplicateRecord = agencyRecordArr.find((existObj) => {
+                        return (
+                            existObj.departmentId === businessLicenseAgencyReviewObj.departmentId
+                        );
+                    });
+                    if (!duplicateRecord) {
+                        agencyRecordArr.push({
+                            departmentId: businessLicenseAgencyReviewObj.departmentId,
+                        });
+                    }
+                });
+                // for department divisions
+                const departmentDivisionsOnly = businessLicenseAgencyReviews.filter((obj) => obj.departmentId && obj.departmentDivisionId);
+                departmentDivisionsOnly.forEach((businessLicenseAgencyReviewObj) => {
+                    const duplicateRecord = agencyRecordArr.find((existObj) => {
+                        return (
+                            existObj.departmentId === businessLicenseAgencyReviewObj.departmentId
+                                && existObj.departmentDivisionId === businessLicenseAgencyReviewObj.departmentDivisionId
+                        );
+                    });
+                    if (!duplicateRecord) {
+                        agencyRecordArr.push({
+                            departmentId: businessLicenseAgencyReviewObj.departmentId,
+                            departmentDivisionId: businessLicenseAgencyReviewObj.departmentDivisionId,
+                        });
+                    }
+                });
                 cb(null, agencyRecordArr);
             }).catch(cb);
         },
