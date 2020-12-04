@@ -2,6 +2,7 @@ import async from 'async';
 import httpStatus from 'http-status';
 import * as _ from 'lodash';
 import db from '../../config/sequelize';
+import departmentReviewAnswerCtrl from './department-review-answer.controller';
 
 const {
     BusinessLicenseAgencyReview,
@@ -90,43 +91,13 @@ function updateStatus(req, res, next) {
 }
 
 function getAssignedAgencies(req, res, next) {
-    const queryValidationErr = validateGetAllQuery(req.query);
-    if (queryValidationErr) {
-        const e = new Error(queryValidationErr);
-        e.status = httpStatus.BAD_REQUEST;
-        return next(e);
-    }
     const { formId } = req.params;
-    const {
-        limit = 200,
-        start = 0,
-        sortColumn = 'id',
-        sortBy = 'ASC',
-    } = req.query;
-    const offset = start;
-    const whereCondtion = {
-        applicationFormId: formId,
-    };
-    async.waterfall([
-        (cb) => {
-            BusinessLicenseAgencyReview.findAll({
-                where: whereCondtion,
-                offset,
-                limit,
-                order: [
-                    [sortColumn, sortBy.toUpperCase()],
-                ],
-            }).then((response) => {
-                return cb(null, response);
-            }).catch((err) => {
-                return cb(err);
-            });
-        },
-    ], (err, processingData) => {
+
+    departmentReviewAnswerCtrl.getAllBusinessLicenseAgencies(formId, (err, agencyRecords) => {
         if (err) {
             return next(err);
         }
-        return res.json(processingData);
+        return res.json(agencyRecords);
     });
 }
 
@@ -188,42 +159,4 @@ function deleteAgency(req, res, next){
 
 export default {
     getSingle, updateStatus, getAssignedAgencies, updateAssignedAgencies,
-};
-
-const validateGetAllQuery = (query) => {
-    const {
-        limit, start, sortColumn, sortBy,
-    } = query;
-    const allowedSortingColumn = [
-        'id',
-        'createdAt',
-        'updatedAt',
-    ];
-    const allowedSortBy = ['asc', 'desc'];
-
-    if (!_.isUndefined(limit) && isNaN(limit)) {
-        return 'limit value should be integer';
-    }
-
-    if (!_.isUndefined(limit) && limit < 1) {
-        return 'limit value cannot be less than 1';
-    }
-
-    if (!_.isUndefined(start) && isNaN(start)) {
-        return 'start value should be integer';
-    }
-
-    if (!_.isUndefined(start) && start < 0) {
-        return 'start value cannot be less than 0';
-    }
-
-    if (!_.isUndefined(sortColumn) && !allowedSortingColumn.includes(sortColumn)) {
-        return 'The given sorting column is not supported';
-    }
-
-    if (!_.isUndefined(sortBy) && !allowedSortBy.includes(sortBy)) {
-        return 'The given sortBy value is not supported';
-    }
-
-    return null;
 };
