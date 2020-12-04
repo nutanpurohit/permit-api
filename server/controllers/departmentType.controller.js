@@ -99,7 +99,7 @@ function getAllDepartmentAndDepartmentDivision(req, res, next) {
                     DepartmentType.findAll({
                         where: {
                             shortCode: {
-                                [Op.notIn]: ['DRT', 'BLB'],
+                                [Op.notIn]: ['DRT'],
                             },
                         },
                         attributes: ['id', ['id', 'departmentId'], 'name', 'shortCode'],
@@ -111,6 +111,11 @@ function getAllDepartmentAndDepartmentDivision(req, res, next) {
                 },
                 departmentDivisions: (done) => {
                     DepartmentDivision.findAll({
+                        where: {
+                            shortCode: {
+                                [Op.notIn]: ['BLB'],
+                            },
+                        },
                         attributes: ['id', ['id', 'departmentDivisionId'], 'name', 'departmentId', 'shortCode'],
                         order: [['shortCode', 'ASC']],
                         raw: true,
