@@ -97,7 +97,13 @@ function getAllDepartmentAndDepartmentDivision(req, res, next) {
             async.parallel({
                 departments: (done) => {
                     DepartmentType.findAll({
-                        attributes: ['id', 'name', 'shortCode'],
+                        where: {
+                            shortCode: {
+                                [Op.notIn]: ['DRT'],
+                            },
+                        },
+                        attributes: ['id', ['id', 'departmentId'], 'name', 'shortCode'],
+                        order: [['shortCode', 'ASC']],
                         raw: true,
                     }).then((allDepartments) => {
                         done(null, allDepartments);
@@ -105,7 +111,13 @@ function getAllDepartmentAndDepartmentDivision(req, res, next) {
                 },
                 departmentDivisions: (done) => {
                     DepartmentDivision.findAll({
-                        attributes: ['id', 'name', 'departmentId', 'shortCode'],
+                        where: {
+                            shortCode: {
+                                [Op.notIn]: ['BLB'],
+                            },
+                        },
+                        attributes: ['id', ['id', 'departmentDivisionId'], 'name', 'departmentId', 'shortCode'],
+                        order: [['shortCode', 'ASC']],
                         raw: true,
                     }).then((allDepartmentDivisions) => {
                         done(null, allDepartmentDivisions);
@@ -122,21 +134,7 @@ function getAllDepartmentAndDepartmentDivision(req, res, next) {
         if (err) {
             return next(err);
         }
-        const allRecords = [];
-        // eslint-disable-next-line array-callback-return
-        processingData.departments.map((data) => {
-            if (data.shortCode !== 'DRT' || data.shortCode !== 'BLB') {
-                const obj = { ...data, departmentId: data.id };
-                allRecords.push(obj);
-            }
-        });
-        // eslint-disable-next-line array-callback-return
-        processingData.departmentDivisions.map((data) => {
-            const obj = { ...data, departmentDivisionId: data.id };
-            allRecords.push(obj);
-        });
-
-
+        const allRecords = processingData.departments.concat(processingData.departmentDivisions);
         return res.json({ departments: allRecords });
     });
 }

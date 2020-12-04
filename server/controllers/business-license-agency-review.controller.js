@@ -1,12 +1,13 @@
 import async from 'async';
 import httpStatus from 'http-status';
-import * as _ from 'lodash';
+import { Error } from 'sequelize';
 import db from '../../config/sequelize';
 import departmentReviewAnswerCtrl from './department-review-answer.controller';
 
 const {
     BusinessLicenseAgencyReview,
     BusinessLicenseApplication,
+    ApplicationStatusType,
 } = db;
 
 
@@ -17,6 +18,9 @@ function getSingle(req, res, next) {
         (cb) => {
             BusinessLicenseAgencyReview.findOne({
                 where: { applicationFormId: formId, departmentId: depId },
+                include: [
+                    { model: ApplicationStatusType, attributes: ['id', 'name'] },
+                ],
             })
                 .then((record) => {
                     const processingData = { record };
@@ -101,54 +105,85 @@ function getAssignedAgencies(req, res, next) {
     });
 }
 
-function updateAssignedAgencies(req, res, next) {
-    const { formId } = req.params;
-    const { assignedAgenciesBody } = req.body;
-    const assignedAgencyWhereCondition = {
-        applicationFormId: formId,
-    };
+function addAgency(req, res, next) {
+    const validateErr = validatePayload(req.body);
+    if (validateErr) {
+        const e = new Error(validateErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
     async.waterfall([
         (cb) => {
-            BusinessLicenseAgencyReview.findAll({
-                where: assignedAgencyWhereCondition,
-            })
-                .then((records) => {
-                    return cb(null, records);
-                })
-                .catch((err) => {
-                    return cb(err);
-                });
+            BusinessLicenseAgencyReview.create(req.body).then(() => {
+                return cb();
+            }).catch(cb);
         },
-        (assignedAgenciesRecords, cb) => {
-            async.eachLimit(assignedAgenciesBody, 5, (agencyObj, eachCb) => {
-                const newArray = assignedAgenciesRecords.find((data) => {
-                    if (agencyObj.type === 'department') {
-                        return parseInt(agencyObj.id) === parseInt(data.departmentId);
-                    }
-                    if (agencyObj.type === 'departmentDivision') {
-                        return parseInt(agencyObj.id) === parseInt(data.departmentDivisionId);
-                    }
-                    return false;
-                });
-                if (!newArray) {
-                    console.log('create');
-                }
-                eachCb(assignedAgenciesRecords);
-            }, (eachErr) => {
-                if (eachErr) {
-                    return cb(eachErr);
-                }
-                return cb(null, assignedAgenciesRecords);
-            });
-        },
-    ], (err, processData) => {
+    ], (err) => {
         if (err) {
             return next(err);
         }
-        return res.json(processData);
+        return res.json({
+            status: 'Agency addedd successfully',
+        });
+    });
+}
+
+function deleteAgency(req, res, next) {
+    const validateErr = validatePayload(req.body);
+    if (validateErr) {
+        const e = new Error(validateErr);
+        e.status = httpStatus.BAD_REQUEST;
+        return next(e);
+    }
+    const deleteWhereCondition = getDeleteWhereCondition(req.body);
+    async.waterfall([
+        (cb) => {
+            BusinessLicenseAgencyReview.destroy({ where: deleteWhereCondition }).then(() => {
+                return cb();
+            }).catch(cb);
+        },
+    ], (err) => {
+        if (err) {
+            return next(err);
+        }
+        return res.json({
+            status: 'Agency deleted successfully',
+        });
     });
 }
 
 export default {
-    getSingle, updateStatus, getAssignedAgencies, updateAssignedAgencies,
+    getSingle, updateStatus, getAssignedAgencies, addAgency, deleteAgency,
+};
+
+const validatePayload = (body) => {
+    const {
+        applicationFormId, departmentId, departmentDivisionId,
+    } = body;
+
+    if (!applicationFormId) {
+        return 'applicationFormId is missing';
+    }
+    if (!departmentId && !departmentDivisionId) {
+        return 'departmentId and departmentDivisionId both are missing';
+    }
+};
+
+const getDeleteWhereCondition = (params) => {
+    const {
+        applicationFormId, departmentId, departmentDivisionId,
+    } = params;
+
+    const whereCondition = {};
+
+    if (departmentId) {
+        whereCondition.departmentId = departmentId;
+    }
+    if (applicationFormId) {
+        whereCondition.applicationFormId = applicationFormId;
+    }
+    if (departmentDivisionId) {
+        whereCondition.departmentDivisionId = departmentDivisionId;
+    }
+    return whereCondition;
 };

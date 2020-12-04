@@ -15,9 +15,14 @@ router.route('/department/:depId/applicationForm/:formId')
 
 router.route('/:formId/assigned-agencies')
     /** GET /api/{version}/business-license-agency-review/:formId/assigned-agencies - Get the business license assigned agencies */
-    .get(BLAgencyReviewRouteCtrl.getAssignedAgencies)
+    .get(BLAgencyReviewRouteCtrl.getAssignedAgencies);
 
-    /** PUT /api/{version}/business-license-agency-review/:formId/assigned-agencies - Update the business license assigned agencies */
-    .put(BLAgencyReviewRouteCtrl.updateAssignedAgencies);
+router.route('/add')
+/** PUT /api/{version}/business-license-agency-review/add - add business license agency review */
+    .post(BLAgencyReviewRouteCtrl.addAgency);
+
+router.route('/delete')
+    /** DELETE /api/{version}/business-license-agency-review/delete/department/:departmentId/applicationForm/:applicationFormId/:departmentDivisionId - delete business license agency review */
+    .put(BLAgencyReviewRouteCtrl.deleteAgency);
 
 export default router;

@@ -140,16 +140,17 @@ function getCodeOption(req, res, next) {
     const {
         codeId,
     } = req.params;
-    const projectArray = ['id', 'code', 'codeParent', 'title'];
+    const projectArray = ['id', 'code', 'codeParent', 'title', 'codeText'];
     async.waterfall([
         (cb) => {
             NAICSType.findOne({
                 where: {
                     id: codeId,
+                    codeLength: 6,
                 },
             }).then((response) => {
                 if (_.isEmpty(response)) {
-                    const e = new Error('The NAICS with the given id do not exist');
+                    const e = new Error('The NAICS with the given id do not exist for code 6');
                     e.status = httpStatus.NOT_FOUND;
                     return next(e);
                 }
@@ -208,7 +209,7 @@ function getCodeOption(req, res, next) {
             async.parallel({
                 twocode: (done) => {
                     const {
-                        id, code, codeParent, title,
+                        id, code, codeParent, title, codeText,
                     } = _.get(processingData, 'parentNAICS.parentNAICS.parentNAICS.parentNAICS', null);
                     NAICSType.findAll({
                         where: {
@@ -218,7 +219,7 @@ function getCodeOption(req, res, next) {
                     }).then((optionList) => {
                         const TwoCodeObj = {};
                         TwoCodeObj.selectedCodeOption = {
-                            id, code, codeParent, title,
+                            id, code, codeParent, title, codeText,
                         };
                         TwoCodeObj.CodeTwoOptions = optionList;
 
@@ -227,7 +228,7 @@ function getCodeOption(req, res, next) {
                 },
                 threeCode: (done) => {
                     const {
-                        id, code, codeParent, title,
+                        id, code, codeParent, title, codeText,
                     } = _.get(processingData, 'parentNAICS.parentNAICS.parentNAICS', null);
 
                     NAICSType.findAll({
@@ -238,7 +239,7 @@ function getCodeOption(req, res, next) {
                     }).then((optionList) => {
                         const ThreeCodeObj = {};
                         ThreeCodeObj.selectedCodeOption = {
-                            id, code, codeParent, title,
+                            id, code, codeParent, title, codeText,
                         };
                         ThreeCodeObj.CodeThreeOptions = optionList;
 
@@ -247,7 +248,7 @@ function getCodeOption(req, res, next) {
                 },
                 fourCode: (done) => {
                     const {
-                        id, code, codeParent, title,
+                        id, code, codeParent, title, codeText,
                     } = _.get(processingData, 'parentNAICS.parentNAICS', null);
 
                     NAICSType.findAll({
@@ -258,7 +259,7 @@ function getCodeOption(req, res, next) {
                     }).then((optionList) => {
                         const FourCodeObj = {};
                         FourCodeObj.selectedCodeOption = {
-                            id, code, codeParent, title,
+                            id, code, codeParent, title, codeText,
                         };
                         FourCodeObj.CodeFourOptions = optionList;
 
@@ -267,7 +268,7 @@ function getCodeOption(req, res, next) {
                 },
                 fiveCode: (done) => {
                     const {
-                        id, code, codeParent, title,
+                        id, code, codeParent, title, codeText,
                     } = _.get(processingData, 'parentNAICS', null);
 
                     NAICSType.findAll({
@@ -278,7 +279,7 @@ function getCodeOption(req, res, next) {
                     }).then((optionList) => {
                         const FiveCodeObj = {};
                         FiveCodeObj.selectedCodeOption = {
-                            id, code, codeParent, title,
+                            id, code, codeParent, title, codeText,
                         };
                         FiveCodeObj.CodeFiveOptions = optionList;
 
@@ -287,7 +288,7 @@ function getCodeOption(req, res, next) {
                 },
                 sixCode: (done) => {
                     const {
-                        id, code, codeParent, title,
+                        id, code, codeParent, title, codeText,
                     } = processingData;
 
                     NAICSType.findAll({
@@ -298,7 +299,7 @@ function getCodeOption(req, res, next) {
                     }).then((optionList) => {
                         const SixCodeObj = {};
                         SixCodeObj.selectedCodeOption = {
-                            id, code, codeParent, title,
+                            id, code, codeParent, title, codeText,
                         };
                         SixCodeObj.CodeSixOptions = optionList;
 

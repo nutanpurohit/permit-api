@@ -18,10 +18,11 @@ module.exports = (sequelize, DataTypes) => {
     BusinessLicenseAgencyReview.sync();
 
     BusinessLicenseAgencyReview.registerModels = (db) => {
-        const { DepartmentType, DepartmentDivision } = db;
+        const { DepartmentType, DepartmentDivision, ApplicationStatusType } = db;
 
         BusinessLicenseAgencyReview.belongsTo(DepartmentType, { foreignKey: 'departmentId' });
         BusinessLicenseAgencyReview.belongsTo(DepartmentDivision, { foreignKey: 'departmentDivisionId' });
+        BusinessLicenseAgencyReview.belongsTo(ApplicationStatusType, { foreignKey: 'reviewStatus' });
     };
 
     return BusinessLicenseAgencyReview;
