@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import httpStatus from 'http-status';
 import async from 'async';
+import Sequelize from 'sequelize';
 import db from '../../config/sequelize';
 
 const {
@@ -10,8 +11,13 @@ const {
     AnswerType,
     DepartmentReviewQuestion,
     BusinessLicenseAgencyReview,
+    FormNAICSRelationship,
+    NAICSDepartmentRelationship,
+    NAICSType,
     FormComment,
 } = db;
+
+const { Op } = Sequelize;
 
 function create(req, res, next) {
     const payload = req.body;
@@ -182,13 +188,20 @@ function getAllDepartmentReviewAnswer(req, res, next) {
                     }).catch(done);
                 },
                 AgencyRecords: (done) => {
-                    BusinessLicenseAgencyReview.findAll({
-                        where: {
-                            applicationFormId: req.params.applicationFormId,
-                        },
-                    }).then((agencyRecords) => {
-                        done(null, agencyRecords);
-                    }).catch(done);
+                    getAllBusinessLicenseAgencies(req.params.applicationFormId, (err, agencyRecords) => {
+                        if (err) {
+                            return done(err);
+                        }
+
+                        return done(null, agencyRecords);
+                    });
+                    // BusinessLicenseAgencyReview.findAll({
+                    //     where: {
+                    //         applicationFormId: req.params.applicationFormId,
+                    //     },
+                    // }).then((agencyRecords) => {
+                    //     done(null, agencyRecords);
+                    // }).catch(done);
                 },
             }, (parallelErr, parallelRes) => {
                 if (parallelErr) {
@@ -504,5 +517,120 @@ const getAnswerObject = (answerWhereCondition, questionWhereCondition, commentWh
         };
 
         cb(null, answerObject);
+    });
+};
+
+const getAllBusinessLicenseAgencies = (applicationFormId, callback) => {
+    async.waterfall([
+        // find the Form NAICS Relationships for this application form
+        (cb) => {
+            FormNAICSRelationship.findAll({
+                where: { applicationFormId, applicationFormType: 'businessLicense' },
+                include: [
+                    {
+                        model: NAICSType,
+                        attributes: ['id', 'code', 'codeText', 'codeParent'],
+                        include: [{
+                            model: NAICSType,
+                            as: 'parentNAICS',
+                            attributes: ['id', 'code', 'codeText', 'codeParent'],
+                            include: [{
+                                model: NAICSType,
+                                as: 'parentNAICS',
+                                attributes: ['id', 'code', 'codeText', 'codeParent'],
+                                include: [{
+                                    model: NAICSType,
+                                    as: 'parentNAICS',
+                                    attributes: ['id', 'code', 'codeText', 'codeParent'],
+                                }],
+                            }],
+                        }],
+                    },
+                ],
+            })
+                .then((formNAICSRelationships) => {
+                    const processingData = {
+                        formNAICSRelationships,
+                    };
+                    return cb(null, processingData);
+                })
+                .catch((err) => {
+                    return cb(err);
+                });
+        },
+
+        // find all the department linked to the NAICS id
+        (processingData, cb) => {
+            if (_.isEmpty(processingData.formNAICSRelationships)) {
+                return cb(null, processingData);
+            }
+            const naicsIds = [];
+            processingData.formNAICSRelationships.forEach((formNAICSRelationship) => {
+                const naicsId = _.get(formNAICSRelationship, 'NAICSType.parentNAICS.parentNAICS.parentNAICS.id', null);
+                if (naicsId && !naicsIds.includes(naicsId)) {
+                    naicsIds.push(naicsId);
+                }
+            });
+
+            processingData.naicsIds = naicsIds;
+            if (_.isEmpty(naicsIds)) {
+                return cb(null, processingData);
+            }
+
+            NAICSDepartmentRelationship.findAll({
+                where: { naicsId: naicsIds },
+            })
+                .then((naicsDepartmentRelationships) => {
+                    processingData.naicsDepartmentRelationships = naicsDepartmentRelationships;
+                    return cb(null, processingData);
+                })
+                .catch((err) => {
+                    return cb(err);
+                });
+        },
+        (processingData, cb) => {
+            if (_.isEmpty(processingData.naicsDepartmentRelationships)) {
+                return cb();
+            }
+
+            const agencyRecordArr = [];
+            processingData.naicsDepartmentRelationships.forEach((NAICSDepartmentRelationshipObj) => {
+                const duplicateRecord = agencyRecordArr.find((existObj) => existObj.departmentId === NAICSDepartmentRelationshipObj.departmentId);
+                if (!duplicateRecord) {
+                    agencyRecordArr.push({
+                        departmentId: NAICSDepartmentRelationshipObj.departmentId,
+                    });
+                }
+            });
+
+            // find the department divisions that are responsible for this review
+            BusinessLicenseAgencyReview.findAll({
+                where: {
+                    applicationFormId,
+                    departmentDivisionId: {
+                        [Op.ne]: null,
+                    },
+                },
+            }).then((businessLicenseAgencyReviews) => {
+                if (!_.isEmpty(businessLicenseAgencyReviews)) {
+                    businessLicenseAgencyReviews.forEach((businessLicenseAgencyReviewObj) => {
+                        const duplicateRecord = agencyRecordArr.find((existObj) => existObj.departmentDivisionId === businessLicenseAgencyReviewObj.departmentDivisionId);
+                        if (!duplicateRecord) {
+                            agencyRecordArr.push({
+                                departmentId: businessLicenseAgencyReviewObj.departmentId,
+                                departmentDivisionId: businessLicenseAgencyReviewObj.departmentDivisionId,
+                            });
+                        }
+                    });
+                }
+                cb(null, agencyRecordArr);
+            }).catch(cb);
+        },
+    ], (waterfallErr, agencyRecords) => {
+        if (waterfallErr) {
+            return callback(waterfallErr);
+        }
+
+        return callback(null, agencyRecords);
     });
 };
