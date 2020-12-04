@@ -31,7 +31,7 @@ router.route('/status/:id')
     /** PUT /api/{version}/naics-code/id - update NAICS Status */
     .put(naicsCodeCtrl.updateNAICSStatus);
 
-router.route('/options/:code')
+router.route('/options/:codeId')
     /** GET /api/{version}/naics-code/options/:code - operations for get NAICS code option list */
     .get(naicsCodeCtrl.getCodeOption);
 

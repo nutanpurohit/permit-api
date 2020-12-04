@@ -6,8 +6,6 @@ import db from '../../config/sequelize';
 const {
     BusinessLicenseAgencyReview,
     BusinessLicenseApplication,
-    DepartmentDivision,
-    DepartmentType,
 } = db;
 
 
@@ -109,27 +107,32 @@ function getAssignedAgencies(req, res, next) {
     const whereCondtion = {
         applicationFormId: formId,
     };
-    BusinessLicenseAgencyReview.findAll({
-        where: whereCondtion,
-        offset,
-        limit,
-        order: [
-            [sortColumn, sortBy.toUpperCase()],
-        ],
-        include: [
-            { model: DepartmentDivision },
-            { model: DepartmentType },
-        ],
-    }).then((response) => {
-        return res.json(response);
-    }).catch((err) => {
-        return next(err);
+    async.waterfall([
+        (cb) => {
+            BusinessLicenseAgencyReview.findAll({
+                where: whereCondtion,
+                offset,
+                limit,
+                order: [
+                    [sortColumn, sortBy.toUpperCase()],
+                ],
+            }).then((response) => {
+                return cb(null, response);
+            }).catch((err) => {
+                return cb(err);
+            });
+        },
+    ], (err, processingData) => {
+        if (err) {
+            return next(err);
+        }
+        return res.json(processingData);
     });
 }
 
 function updateAssignedAgencies(req, res, next) {
     const { formId } = req.params;
-    const { assignedAgencies } = req.body;
+    const { assignedAgenciesBody } = req.body;
     const assignedAgencyWhereCondition = {
         applicationFormId: formId,
     };
@@ -146,7 +149,7 @@ function updateAssignedAgencies(req, res, next) {
                 });
         },
         (assignedAgenciesRecords, cb) => {
-            async.eachLimit(assignedAgencies, 5, (agencyObj, eachCb) => {
+            async.eachLimit(assignedAgenciesBody, 5, (agencyObj, eachCb) => {
                 const newArray = assignedAgenciesRecords.find((data) => {
                     if (agencyObj.type === 'department') {
                         return parseInt(agencyObj.id) === parseInt(data.departmentId);
@@ -158,8 +161,6 @@ function updateAssignedAgencies(req, res, next) {
                 });
                 if (!newArray) {
                     console.log('create');
-                } else {
-                    console.log('update');
                 }
                 eachCb(assignedAgenciesRecords);
             }, (eachErr) => {
@@ -167,12 +168,6 @@ function updateAssignedAgencies(req, res, next) {
                     return cb(eachErr);
                 }
                 return cb(null, assignedAgenciesRecords);
-            });
-        },
-        (assignedAgenciesRecords, cb) => {
-            console.log('in delete assignedAgencie');
-            return cb(null, {
-                processingData: [],
             });
         },
     ], (err, processData) => {

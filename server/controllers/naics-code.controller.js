@@ -1,7 +1,7 @@
 import async from 'async';
 import httpStatus from 'http-status';
 import * as _ from 'lodash';
-import Sequelize, { where } from 'sequelize';
+import Sequelize from 'sequelize';
 import db from '../../config/sequelize';
 
 const { Op } = Sequelize;
@@ -138,24 +138,164 @@ function getAllForAdmin(req, res, next) {
 
 function getCodeOption(req, res, next) {
     const {
-        code,
+        codeId,
     } = req.params;
+    const projectArray = ['id', 'code', 'codeParent', 'title'];
     async.waterfall([
         (cb) => {
             NAICSType.findOne({
-                where: { code },
+                where: { id: codeId },
+                attributes: projectArray,
+                include: [
+                    {
+                        model: NAICSType,
+                        attributes: projectArray,
+                        as: 'parentNAICS',
+                        include: [
+                            {
+                                model: NAICSType,
+                                attributes: projectArray,
+                                as: 'parentNAICS',
+                                include: [
+                                    {
+                                        model: NAICSType,
+                                        attributes: projectArray,
+                                        as: 'parentNAICS',
+                                        include: [
+                                            {
+                                                model: NAICSType,
+                                                attributes: projectArray,
+                                                as: 'parentNAICS',
+                                                include: [
+                                                    {
+                                                        model: NAICSType,
+                                                        attributes: projectArray,
+                                                        as: 'parentNAICS',
+                                                    },
+                                                ],
+                                            },
+                                        ],
+                                    },
+
+                                ],
+                            },
+                        ],
+                    },
+                ],
             }).then((codeResult) => {
-                const processingData = {
-                    codeSix: codeResult,
-                    codeParent: _.get(codeResult, 'codeParent', null),
-                };
-                return cb(null, processingData);
+                return cb(null, codeResult);
             }).catch((err) => {
                 return cb(err);
             });
         },
-        (cb, processingData) => {
-            return cb(null, processingData);
+        (processingData, cb) => {
+            async.parallel({
+                twocode: (done) => {
+                    const {
+                        id, code, codeParent, title,
+                    } = _.get(processingData, 'parentNAICS.parentNAICS.parentNAICS.parentNAICS', null);
+                    NAICSType.findAll({
+                        where: {
+                            codeParent,
+                        },
+                        attributes: projectArray,
+                    }).then((optionList) => {
+                        const TwoCodeObj = {};
+                        TwoCodeObj.selectedCodeOption = {
+                            id, code, codeParent, title,
+                        };
+                        TwoCodeObj.CodeTwoOptions = optionList;
+
+                        return done(null, TwoCodeObj);
+                    }).catch(done);
+                },
+                threeCode: (done) => {
+                    const {
+                        id, code, codeParent, title,
+                    } = _.get(processingData, 'parentNAICS.parentNAICS.parentNAICS', null);
+
+                    NAICSType.findAll({
+                        where: {
+                            codeParent,
+                        },
+                        attributes: projectArray,
+                    }).then((optionList) => {
+                        const ThreeCodeObj = {};
+                        ThreeCodeObj.selectedCodeOption = {
+                            id, code, codeParent, title,
+                        };
+                        ThreeCodeObj.CodeThreeOptions = optionList;
+
+                        return done(null, ThreeCodeObj);
+                    }).catch(done);
+                },
+                fourCode: (done) => {
+                    const {
+                        id, code, codeParent, title,
+                    } = _.get(processingData, 'parentNAICS.parentNAICS', null);
+
+                    NAICSType.findAll({
+                        where: {
+                            codeParent,
+                        },
+                        attributes: projectArray,
+                    }).then((optionList) => {
+                        const FourCodeObj = {};
+                        FourCodeObj.selectedCodeOption = {
+                            id, code, codeParent, title,
+                        };
+                        FourCodeObj.CodeFourOptions = optionList;
+
+                        return done(null, FourCodeObj);
+                    }).catch(done);
+                },
+                fiveCode: (done) => {
+                    const {
+                        id, code, codeParent, title,
+                    } = _.get(processingData, 'parentNAICS', null);
+
+                    NAICSType.findAll({
+                        where: {
+                            codeParent,
+                        },
+                        attributes: projectArray,
+                    }).then((optionList) => {
+                        const FiveCodeObj = {};
+                        FiveCodeObj.selectedCodeOption = {
+                            id, code, codeParent, title,
+                        };
+                        FiveCodeObj.CodeFiveOptions = optionList;
+
+                        return done(null, FiveCodeObj);
+                    }).catch(done);
+                },
+                sixCode: (done) => {
+                    const {
+                        id, code, codeParent, title,
+                    } = processingData;
+
+                    NAICSType.findAll({
+                        where: {
+                            codeParent,
+                        },
+                        attributes: projectArray,
+                    }).then((optionList) => {
+                        const SixCodeObj = {};
+                        SixCodeObj.selectedCodeOption = {
+                            id, code, codeParent, title,
+                        };
+                        SixCodeObj.CodeSixOptions = optionList;
+
+                        return done(null, SixCodeObj);
+                    }).catch(done);
+                },
+
+            }, (parallelErr, parallelResponse) => {
+                if (parallelErr) {
+                    return cb(parallelErr);
+                }
+                return cb(null, parallelResponse);
+            });
         },
     ], (err, processingData) => {
         if (err) {
