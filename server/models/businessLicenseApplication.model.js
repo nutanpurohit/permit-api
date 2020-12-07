@@ -23,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
         registrationNo: { type: DataTypes.STRING(300) },
         mailingAddress: { type: DataTypes.STRING(600) },
         businessLocation: { type: DataTypes.STRING(600) },
+        landParcelLocation: { type: DataTypes.STRING(600) },
         businessActivityDescription: { type: DataTypes.STRING(600) },
         businessAs: { type: DataTypes.STRING(300) },
         organizationTypeId: { type: DataTypes.BIGINT.UNSIGNED },
