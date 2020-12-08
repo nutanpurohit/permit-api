@@ -374,7 +374,7 @@ const getAllBusinessLicenseAgencies = (applicationFormId, callback) => {
         },
         (processingData, cb) => {
             if (_.isEmpty(processingData.naicsDepartmentRelationships)) {
-                return cb();
+                processingData.naicsDepartmentRelationships=[];
             }
 
             const agencyRecordArr = [];

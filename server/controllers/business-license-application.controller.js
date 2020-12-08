@@ -836,6 +836,7 @@ const businessLicenseProjection = () => {
         'applicantFullName',
         'registrationNo',
         'mailingAddress',
+        'landParcelLocation',
         'businessLocation',
         'businessActivityDescription',
         'businessAs',
